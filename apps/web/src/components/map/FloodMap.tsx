@@ -1,7 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { MapContainer, TileLayer, Circle, Marker, Popup, useMap } from 'react-leaflet';
+import {
+  MapContainer,
+  TileLayer,
+  Circle,
+  Marker,
+  Popup,
+  useMap,
+} from 'react-leaflet';
 import L from 'leaflet';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -10,10 +17,14 @@ import Stack from '@mui/material/Stack';
 import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import ButtonGroup from '@mui/material/ButtonGroup';
+import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -25,6 +36,9 @@ import AdjustIcon from '@mui/icons-material/Adjust';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import TerrainIcon from '@mui/icons-material/Terrain';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import { FloodZone, DemonstrationMunicipality } from '@flood-control/shared';
 import { severityColorMap } from '../../theme/theme';
 
@@ -35,6 +49,8 @@ interface FloodMapProps {
   zones: FloodZone[];
   selectedZoneId: string | null;
   onSelectZone: (zoneId: string | null) => void;
+  hoveredZoneId?: string | null;
+  onHoverZone?: (zoneId: string | null) => void;
 }
 
 type MapDisplayMode = 'radius' | 'flags' | 'heatmap';
@@ -43,10 +59,12 @@ function MapViewController({
   selectedZone,
   defaultCenter,
   defaultZoom,
+  resetCount,
 }: {
   selectedZone: FloodZone | undefined;
   defaultCenter: [number, number];
   defaultZoom: number;
+  resetCount: number;
 }) {
   const map = useMap();
 
@@ -60,15 +78,48 @@ function MapViewController({
         duration: 1.0,
       });
     }
-  }, [selectedZone, defaultCenter, defaultZoom, map]);
+  }, [selectedZone, defaultCenter, defaultZoom, resetCount, map]);
 
   return null;
 }
 
 /**
+ * Compact resting badge label for the flag.
+ */
+function getSmartBarangayFlagLabel(zone: FloodZone): string {
+  if (zone.barangayNumber) {
+    return `Brgy ${zone.barangayNumber}`;
+  }
+  const name = zone.barangay;
+  if (name.startsWith('Ibabang ')) {
+    return 'Ib. ' + name.replace('Ibabang ', '');
+  }
+  if (name.startsWith('Ilayang ')) {
+    return 'Il. ' + name.replace('Ilayang ', '');
+  }
+  if (name.startsWith('Mayao ')) {
+    return 'M. ' + name.replace('Mayao ', '');
+  }
+  if (name === 'Gulang-Gulang') {
+    return 'Gulang-G.';
+  }
+  return name;
+}
+
+/**
+ * Full official barangay name displayed when the flag becomes longer on hover.
+ */
+function getFullBarangayDisplayName(zone: FloodZone): string {
+  if (zone.barangayNumber) {
+    return `Barangay ${zone.barangayNumber} (Poblacion)`;
+  }
+  return `Barangay ${zone.barangay}`;
+}
+
+/**
  * Calculates a clean, non-colliding influence radius (in meters) for each barangay.
- * Dense Poblacion barangays (Brgy 1 - 11) receive 75m, leaving a clean buffer of 30m - 150m
- * between neighboring centers so their circular zones never collide or overlap.
+ * Dense Poblacion core (Brgy 1 - 11) receives 75m, leaving a clean buffer of 30m - 150m
+ * between neighboring centers so their circular zones never collide.
  */
 function getZoneInfluenceRadius(zone: FloodZone): number {
   if (zone.barangayNumber || zone.areaSquareKm <= 0.25) {
@@ -83,54 +134,63 @@ function getZoneInfluenceRadius(zone: FloodZone): number {
   if (zone.areaSquareKm <= 4.0) {
     return 200;
   }
-  return 240; // Outlying rural barangays
+  return 240; // Outlying municipal barangays
 }
 
 /**
- * Creates a clean flagpole stick marker planted at the exact barangay coordinate.
- * Anchored by a ground base pin dot and shadow, rising with a vertical stick/pole,
- * finial ball, and swallowtail flag banner colored by severity.
+ * Creates an architectural flagpole marker.
+ * On hover, the flag smoothly extends/lengthens outward to show ONLY the full barangay name.
  */
-function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean) {
+function createFlagMarkerIcon(
+  zone: FloodZone,
+  isSelected: boolean,
+  isHovered: boolean = false
+) {
   const colors = severityColorMap[zone.severity];
-  const poleHeight = isSelected ? 42 : 34;
+  const poleHeight = isSelected ? 44 : isHovered ? 40 : 34;
   const isExtreme = zone.severity === 'extreme';
-  const isMajor = zone.severity === 'major';
+  const shortLabel = getSmartBarangayFlagLabel(zone);
+  const fullLabel = getFullBarangayDisplayName(zone);
 
-  const label = zone.barangayNumber
-    ? `B${zone.barangayNumber}`
-    : zone.barangay.length > 8
-    ? zone.barangay.substring(0, 7) + '…'
-    : zone.barangay;
+  const statusDotColor =
+    zone.severity === 'extreme'
+      ? '#EF4444'
+      : zone.severity === 'major'
+      ? '#F97316'
+      : zone.severity === 'moderate'
+      ? '#FBBF24'
+      : '#38BDF8';
 
   const html = `
-    <div class="custom-flag-marker ${isSelected ? 'is-selected' : ''}" style="
+    <div class="custom-flag-marker ${isSelected ? 'is-selected' : ''} ${isHovered ? 'is-hovered' : ''}" style="
       position: relative;
-      width: 90px;
-      height: ${poleHeight + 10}px;
+      width: 280px;
+      height: ${poleHeight + 12}px;
       cursor: pointer;
+      pointer-events: none;
     ">
-      <!-- Ground Shadow underneath anchor -->
+      <!-- Ground Shadow underneath benchmark pin -->
       <div style="
         position: absolute;
-        left: 10px;
+        left: 12px;
         bottom: 0px;
-        width: 14px;
-        height: 5px;
+        width: 16px;
+        height: 6px;
         background: rgba(15, 23, 42, 0.35);
         border-radius: 50%;
         transform: translateX(-50%);
-        filter: blur(1px);
+        filter: blur(1.5px);
+        pointer-events: none;
       "></div>
 
-      <!-- Ground Base Pulsing Ring for Active Alerts / Selected -->
-      ${isExtreme || isSelected ? `
+      <!-- Ground Base Pulsing Sonar Ring for Active Alerts or Focus -->
+      ${isExtreme || isSelected || isHovered ? `
         <div style="
           position: absolute;
-          left: 10px;
+          left: 12px;
           bottom: 2px;
-          width: 18px;
-          height: 18px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           border: 2px solid ${colors.main};
           transform: translate(-50%, 50%);
@@ -139,35 +199,51 @@ function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean) {
         "></div>
       ` : ''}
 
-      <!-- Ground Pin Anchor Dot (stick base planted directly on the coordinate) -->
+      <!-- Precision Survey Ground Benchmark Reticle -->
       <div style="
         position: absolute;
-        left: 10px;
+        left: 12px;
+        bottom: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 1px dashed rgba(255, 255, 255, 0.85);
+        transform: translate(-50%, 50%);
+        box-shadow: 0 0 3px rgba(0,0,0,0.4);
+        pointer-events: none;
+      "></div>
+
+      <!-- Solid Benchmark Ground Dot -->
+      <div style="
+        position: absolute;
+        left: 12px;
         bottom: 1px;
         width: 8px;
         height: 8px;
         border-radius: 50%;
         background-color: ${colors.main};
         border: 2px solid #FFFFFF;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.6);
         transform: translateX(-50%);
         z-index: 2;
+        pointer-events: auto;
       "></div>
 
-      <!-- The Vertical Flagpole Stick -->
+      <!-- The Vertical Flagpole Stick (Brushed Steel Mast) -->
       <div style="
         position: absolute;
-        left: 10px;
+        left: 12px;
         bottom: 4px;
         width: 2.5px;
         height: ${poleHeight}px;
-        background: linear-gradient(180deg, #64748B 0%, #334155 45%, #0F172A 100%);
+        background: linear-gradient(180deg, #94A3B8 0%, #475569 40%, #1E293B 100%);
         transform: translateX(-50%);
         border-radius: 1px;
-        box-shadow: 1px 1px 2px rgba(0,0,0,0.35);
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
         z-index: 1;
+        pointer-events: auto;
       ">
-        <!-- Top Finial Ball -->
+        <!-- Top Milled Brass Finial Ball -->
         <div style="
           position: absolute;
           top: -4px;
@@ -175,14 +251,14 @@ function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean) {
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: ${isSelected ? '#F59E0B' : '#E2E8F0'};
+          background: ${isSelected ? 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 100%)' : '#CBD5E1'};
           border: 1px solid #1E293B;
           transform: translateX(-50%);
-          box-shadow: 0 0 5px ${isSelected ? 'rgba(245, 158, 11, 0.9)' : 'rgba(0,0,0,0.3)'};
+          box-shadow: 0 0 6px ${isSelected ? 'rgba(245, 158, 11, 0.9)' : 'rgba(0,0,0,0.3)'};
         "></div>
 
-        <!-- Swallowtail Flag Banner Attached to Top of Stick -->
-        <div style="
+        <!-- Municipal Swallowtail Flag Placard that extends longer on hover -->
+        <div class="flag-banner-placard" style="
           position: absolute;
           top: 0px;
           left: 2px;
@@ -192,27 +268,41 @@ function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean) {
           padding: 0 12px 0 6px;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           border: 1.5px solid #FFFFFF;
           border-left: none;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
           white-space: nowrap;
           z-index: 3;
-          clip-path: polygon(0% 0%, 100% 0%, 88% 50%, 100% 100%, 0% 100%);
+          clip-path: polygon(0% 0%, 100% 0%, calc(100% - 7px) 50%, 100% 100%, 0% 100%);
+          pointer-events: auto;
         ">
+          <!-- Status pip -->
           <span style="
-            font-size: 8px;
-            opacity: 0.95;
-            line-height: 1;
-          ">${isExtreme ? '⚠' : isMajor ? '▲' : '●'}</span>
-          <span style="
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: ${statusDotColor};
+            box-shadow: 0 0 4px ${statusDotColor};
+            display: inline-block;
+            flex-shrink: 0;
+          "></span>
+          <span class="flag-text-short" style="
             font-size: ${isSelected ? '10.5px' : '9.5px'};
             font-weight: 800;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            letter-spacing: 0.2px;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            letter-spacing: 0.25px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.6);
             line-height: 1;
-          ">${label}</span>
+          ">${shortLabel}</span>
+          <span class="flag-text-full" style="
+            font-size: ${isSelected ? '10.5px' : '9.5px'};
+            font-weight: 800;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            letter-spacing: 0.25px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+            line-height: 1;
+          ">${fullLabel}</span>
         </div>
       </div>
     </div>
@@ -221,8 +311,8 @@ function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean) {
   return L.divIcon({
     html,
     className: 'custom-flag-pin',
-    iconSize: [90, poleHeight + 10],
-    iconAnchor: [10, poleHeight + 5], // Bottom of the stick planted at coordinate
+    iconSize: [280, poleHeight + 12],
+    iconAnchor: [12, poleHeight + 5], // Pinned precisely at base anchor dot
     popupAnchor: [24, -(poleHeight + 6)],
   });
 }
@@ -239,13 +329,32 @@ export function FloodMap({
   zones,
   selectedZoneId,
   onSelectZone,
+  hoveredZoneId: externalHoveredId,
+  onHoverZone,
 }: FloodMapProps) {
   const [displayMode, setDisplayMode] = React.useState<MapDisplayMode>('radius');
+  const [internalHoveredId, setInternalHoveredId] = React.useState<string | null>(null);
+  const [resetCount, setResetCount] = React.useState<number>(0);
+
+  const activeHoveredId = externalHoveredId ?? internalHoveredId;
+
+  const handleHover = React.useCallback(
+    (id: string | null) => {
+      setInternalHoveredId(id);
+      onHoverZone?.(id);
+    },
+    [onHoverZone]
+  );
 
   const selectedZone = React.useMemo(
     () => zones.find((z) => z.id === selectedZoneId),
     [zones, selectedZoneId]
   );
+
+  const handleResetView = React.useCallback(() => {
+    onSelectZone(null);
+    setResetCount((prev) => prev + 1);
+  }, [onSelectZone]);
 
   return (
     <Box
@@ -269,12 +378,34 @@ export function FloodMap({
           background: 'transparent',
           border: 'none',
         },
-        '& .custom-flag-marker': {
-          transition: 'transform 0.15s ease',
+        /* Default compact flag styling */
+        '& .flag-text-full': {
+          display: 'none',
         },
-        '& .custom-flag-marker:hover': {
-          zIndex: 1000,
-          transform: 'scale(1.08)',
+        '& .flag-text-short': {
+          display: 'inline-block',
+        },
+        '& .flag-banner-placard': {
+          maxWidth: '78px',
+          transition:
+            'max-width 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, transform 0.2s ease',
+          overflow: 'hidden',
+        },
+        /* ON HOVER: The flag extends longer and displays ONLY the full barangay name */
+        '& .custom-flag-marker:hover, & .custom-flag-marker.is-hovered': {
+          zIndex: 9999,
+          transform: 'translateY(-2px)',
+        },
+        '& .custom-flag-marker:hover .flag-banner-placard, & .custom-flag-marker.is-hovered .flag-banner-placard': {
+          maxWidth: '260px',
+          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.45)',
+          paddingRight: '14px',
+        },
+        '& .custom-flag-marker:hover .flag-text-short, & .custom-flag-marker.is-hovered .flag-text-short': {
+          display: 'none',
+        },
+        '& .custom-flag-marker:hover .flag-text-full, & .custom-flag-marker.is-hovered .flag-text-full': {
+          display: 'inline-block',
         },
         '@keyframes flagPulseRing': {
           '0%': {
@@ -288,35 +419,245 @@ export function FloodMap({
         },
       }}
     >
-      {/* Floating Map Mode Toggle Controller */}
+      {/* Top Floating Command Bar: Telemetry + Futuristic Autocomplete Search + Reset + Modes */}
       <Paper
-        elevation={3}
+        elevation={4}
         sx={{
           position: 'absolute',
           top: 12,
+          left: 12,
           right: 12,
           zIndex: 1000,
-          p: 0.5,
-          borderRadius: 2,
-          bgcolor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(4px)',
-          border: '1px solid rgba(0, 0, 0, 0.1)',
+          p: 0.75,
+          borderRadius: 2.5,
+          bgcolor: 'rgba(255, 255, 255, 0.94)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(11, 37, 69, 0.12)',
+          boxShadow: '0 8px 32px rgba(11, 37, 69, 0.12)',
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'space-between',
+          gap: 1,
         }}
       >
-        <Stack direction="row" spacing={0.5} alignItems="center">
-          <AdjustIcon sx={{ fontSize: 16, color: 'text.secondary', ml: 0.5 }} />
-          <ButtonGroup size="small" variant="text">
+        {/* Left Side: Live Telemetry Indicator & Futuristic Barangay Search Autocomplete */}
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Box
+            sx={{
+              display: { xs: 'none', md: 'flex' },
+              alignItems: 'center',
+              gap: 0.75,
+              px: 1.25,
+              py: 0.6,
+              borderRadius: 2,
+              bgcolor: 'rgba(15, 23, 42, 0.05)',
+              border: '1px solid rgba(15, 23, 42, 0.08)',
+              flexShrink: 0,
+            }}
+          >
+            <Box
+              sx={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                bgcolor: '#16A34A',
+                boxShadow: '0 0 8px #16A34A',
+              }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 800,
+                fontSize: '0.68rem',
+                color: '#0F172A',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+              }}
+            >
+              CDRRMO Telemetry
+            </Typography>
+          </Box>
+
+          {/* Futuristic Material UI Autocomplete Search */}
+          <Autocomplete
+            size="small"
+            options={zones}
+            getOptionLabel={(option) => `${option.name} (${option.code})`}
+            value={selectedZone || null}
+            onChange={(_, newValue) => onSelectZone(newValue ? newValue.id : null)}
+            sx={{
+              flexGrow: 1,
+              maxWidth: { xs: '100%', sm: 340, md: 400 },
+              '& .MuiOutlinedInput-root': {
+                fontSize: '0.82rem',
+                py: 0.3,
+                borderRadius: 2,
+                bgcolor: 'rgba(255, 255, 255, 0.9)',
+                border: '1px solid rgba(11, 37, 69, 0.12)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: '#FFFFFF',
+                  borderColor: '#0288D1',
+                },
+                '&.Mui-focused': {
+                  bgcolor: '#FFFFFF',
+                  borderColor: '#0288D1',
+                  boxShadow: '0 0 0 3px rgba(2, 136, 209, 0.2)',
+                },
+                '& fieldset': {
+                  border: 'none',
+                },
+              },
+            }}
+            slotProps={{
+              paper: {
+                elevation: 6,
+                sx: {
+                  borderRadius: 2.5,
+                  mt: 1,
+                  border: '1px solid rgba(11, 37, 69, 0.12)',
+                  backdropFilter: 'blur(16px)',
+                  bgcolor: 'rgba(255, 255, 255, 0.98)',
+                  boxShadow: '0 16px 36px -4px rgba(11, 37, 69, 0.25)',
+                  maxHeight: 320,
+                  '& .MuiAutocomplete-listbox': {
+                    p: 0.75,
+                  },
+                },
+              },
+            }}
+            renderOption={(props, option) => {
+              const colors = severityColorMap[option.severity];
+              return (
+                <li
+                  {...props}
+                  key={option.id}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    marginBottom: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{ width: '100%' }}
+                  >
+                    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+                      {/* Futuristic glowing status dot */}
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          bgcolor: colors.main,
+                          boxShadow: `0 0 8px ${colors.main}`,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            color: '#0F172A',
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {option.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: '#64748B', fontSize: '0.7rem' }}
+                        >
+                          {option.code} &bull; Water: {option.waterLevel.currentMeters.toFixed(2)}m (
+                          {option.waterLevel.trend})
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Chip
+                      label={option.severity.toUpperCase()}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.62rem',
+                        fontWeight: 800,
+                        bgcolor: colors.light,
+                        color: colors.dark,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: 1,
+                        ml: 1,
+                      }}
+                    />
+                  </Stack>
+                </li>
+              );
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search or jump to barangay..."
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 17, color: '#0288D1' }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
+          />
+        </Stack>
+
+        {/* Right Side: Re-center / Reset Button + Segmented Display Mode Buttons */}
+        <Stack direction="row" spacing={0.75} alignItems="center" justifyContent="flex-end">
+          <Tooltip title="Reset to Full Lucena City Overview" arrow>
+            <IconButton
+              size="small"
+              onClick={handleResetView}
+              sx={{
+                border: '1px solid rgba(11, 37, 69, 0.14)',
+                borderRadius: 2,
+                p: 0.65,
+                color: '#0F172A',
+                bgcolor: '#FFFFFF',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: '#F1F5F9',
+                  borderColor: '#0288D1',
+                },
+              }}
+            >
+              <CenterFocusStrongIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+
+          <ButtonGroup
+            size="small"
+            variant="text"
+            sx={{ bgcolor: '#F1F5F9', borderRadius: 2, p: 0.25 }}
+          >
             <Button
               onClick={() => setDisplayMode('radius')}
               variant={displayMode === 'radius' ? 'contained' : 'text'}
               startIcon={<AdjustIcon sx={{ fontSize: 13 }} />}
               sx={{
                 fontSize: '0.7rem',
-                py: 0.3,
-                px: 1,
+                py: 0.4,
+                px: 1.1,
                 bgcolor: displayMode === 'radius' ? '#0B2545' : undefined,
-                color: displayMode === 'radius' ? '#FFFFFF' : 'inherit',
-                '&:hover': { bgcolor: displayMode === 'radius' ? '#133966' : undefined },
+                color: displayMode === 'radius' ? '#FFFFFF' : '#334155',
+                fontWeight: 700,
+                borderRadius: '7px !important',
+                boxShadow: displayMode === 'radius' ? '0 2px 6px rgba(11, 37, 69, 0.2)' : 'none',
+                '&:hover': { bgcolor: displayMode === 'radius' ? '#133966' : '#E2E8F0' },
               }}
             >
               Radii & Flags
@@ -327,11 +668,14 @@ export function FloodMap({
               startIcon={<FlagIcon sx={{ fontSize: 13 }} />}
               sx={{
                 fontSize: '0.7rem',
-                py: 0.3,
-                px: 1,
+                py: 0.4,
+                px: 1.1,
                 bgcolor: displayMode === 'flags' ? '#0B2545' : undefined,
-                color: displayMode === 'flags' ? '#FFFFFF' : 'inherit',
-                '&:hover': { bgcolor: displayMode === 'flags' ? '#133966' : undefined },
+                color: displayMode === 'flags' ? '#FFFFFF' : '#334155',
+                fontWeight: 700,
+                borderRadius: '7px !important',
+                boxShadow: displayMode === 'flags' ? '0 2px 6px rgba(11, 37, 69, 0.2)' : 'none',
+                '&:hover': { bgcolor: displayMode === 'flags' ? '#133966' : '#E2E8F0' },
               }}
             >
               Flags Only
@@ -342,11 +686,14 @@ export function FloodMap({
               startIcon={<WhatshotIcon sx={{ fontSize: 13 }} />}
               sx={{
                 fontSize: '0.7rem',
-                py: 0.3,
-                px: 1,
-                bgcolor: displayMode === 'heatmap' ? '#D32F2F' : undefined,
-                color: displayMode === 'heatmap' ? '#FFFFFF' : '#D32F2F',
-                '&:hover': { bgcolor: displayMode === 'heatmap' ? '#B71C1C' : undefined },
+                py: 0.4,
+                px: 1.1,
+                bgcolor: displayMode === 'heatmap' ? '#DC2626' : undefined,
+                color: displayMode === 'heatmap' ? '#FFFFFF' : '#DC2626',
+                fontWeight: 700,
+                borderRadius: '7px !important',
+                boxShadow: displayMode === 'heatmap' ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
+                '&:hover': { bgcolor: displayMode === 'heatmap' ? '#B91C1C' : '#FEE2E2' },
               }}
             >
               Heatmap
@@ -354,6 +701,31 @@ export function FloodMap({
           </ButtonGroup>
         </Stack>
       </Paper>
+
+      {/* Bottom GIS Scale & Dynamic Grid Indicator */}
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 12,
+          left: 12,
+          zIndex: 1000,
+          bgcolor: 'rgba(15, 23, 42, 0.88)',
+          color: '#FFFFFF',
+          px: 1.25,
+          py: 0.5,
+          borderRadius: 2,
+          backdropFilter: 'blur(6px)',
+          display: { xs: 'none', sm: 'flex' },
+          alignItems: 'center',
+          gap: 1,
+          border: '1px solid rgba(255,255,255,0.14)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        }}
+      >
+        <Typography variant="caption" sx={{ fontSize: '0.66rem', fontWeight: 600, letterSpacing: '0.02em' }}>
+          Dynamic Grid: 75m Poblacion Buffer &bull; 160m Riverfront &bull; Zero Collision
+        </Typography>
+      </Box>
 
       <MapContainer
         center={municipality.center}
@@ -370,10 +742,12 @@ export function FloodMap({
           selectedZone={selectedZone}
           defaultCenter={municipality.center}
           defaultZoom={municipality.defaultZoom}
+          resetCount={resetCount}
         />
 
         {zones.map((zone) => {
           const isSelected = zone.id === selectedZoneId;
+          const isHovered = zone.id === activeHoveredId;
           const colors = severityColorMap[zone.severity];
           const val = zone.communityValidation;
           const waterLevelRatio = Math.min(
@@ -408,13 +782,15 @@ export function FloodMap({
                     center={zone.center}
                     radius={radiusMeters}
                     pathOptions={{
-                      color: isSelected ? '#0B2545' : colors.border,
-                      weight: isSelected ? 2.5 : 1.5,
+                      color: isSelected ? '#0B2545' : isHovered ? colors.dark : colors.border,
+                      weight: isSelected ? 3 : isHovered ? 2.5 : 1.5,
                       fillColor: colors.main,
                       fillOpacity: isSelected
-                        ? 0.38
+                        ? 0.40
+                        : isHovered
+                        ? 0.32
                         : zone.severity === 'extreme'
-                        ? 0.28
+                        ? 0.26
                         : 0.18,
                       dashArray: isSelected
                         ? undefined
@@ -424,6 +800,8 @@ export function FloodMap({
                     }}
                     eventHandlers={{
                       click: () => onSelectZone(zone.id),
+                      mouseover: () => handleHover(zone.id),
+                      mouseout: () => handleHover(null),
                     }}
                   />
 
@@ -435,26 +813,36 @@ export function FloodMap({
                       color: colors.main,
                       weight: 1,
                       fillColor: colors.main,
-                      fillOpacity: isSelected ? 0.65 : 0.45,
+                      fillOpacity: isSelected ? 0.65 : isHovered ? 0.55 : 0.45,
                     }}
                     eventHandlers={{
                       click: () => onSelectZone(zone.id),
+                      mouseover: () => handleHover(zone.id),
+                      mouseout: () => handleHover(null),
                     }}
                   />
                 </>
               )}
 
-              {/* 3. Flagstick Marker Planted at Barangay Centroid */}
+              {/* 3. Flagstick Marker: Expands smoothly on hover to show the full name ONLY */}
               <Marker
                 position={zone.center}
-                icon={createFlagMarkerIcon(zone, isSelected)}
+                icon={createFlagMarkerIcon(zone, isSelected, isHovered)}
                 eventHandlers={{
                   click: () => onSelectZone(zone.id),
+                  mouseover: () => handleHover(zone.id),
+                  mouseout: () => handleHover(null),
                 }}
               >
+                {/* Full Inspection Popup on Click */}
                 <Popup minWidth={280} maxWidth={340}>
                   <Box sx={{ p: 0.5 }}>
-                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{ mb: 1 }}
+                    >
                       <Chip
                         label={`Brgy. ${zone.barangay}`}
                         size="small"
@@ -480,7 +868,10 @@ export function FloodMap({
                       />
                     </Stack>
 
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.25, mb: 0.5 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ fontWeight: 700, lineHeight: 1.25, mb: 0.5 }}
+                    >
                       {zone.name}
                     </Typography>
 
@@ -499,7 +890,10 @@ export function FloodMap({
                           <Stack direction="row" spacing={0.5} alignItems="center">
                             <SquareFootIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
                             <Box>
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.68rem' }}>
+                              <Typography
+                                variant="caption"
+                                sx={{ color: 'text.secondary', display: 'block', fontSize: '0.68rem' }}
+                              >
                                 Land Area
                               </Typography>
                               <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
@@ -513,7 +907,10 @@ export function FloodMap({
                           <Stack direction="row" spacing={0.5} alignItems="center">
                             <TerrainIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
                             <Box>
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.68rem' }}>
+                              <Typography
+                                variant="caption"
+                                sx={{ color: 'text.secondary', display: 'block', fontSize: '0.68rem' }}
+                              >
                                 Elevation
                               </Typography>
                               <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
@@ -527,7 +924,10 @@ export function FloodMap({
                           <Stack direction="row" spacing={0.5} alignItems="center">
                             <PeopleOutlineIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
                             <Box>
-                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.68rem' }}>
+                              <Typography
+                                variant="caption"
+                                sx={{ color: 'text.secondary', display: 'block', fontSize: '0.68rem' }}
+                              >
                                 Population
                               </Typography>
                               <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
@@ -539,10 +939,16 @@ export function FloodMap({
 
                         <Grid item xs={6}>
                           <Box sx={{ pl: 0.5 }}>
-                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.68rem' }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ color: 'text.secondary', display: 'block', fontSize: '0.68rem' }}
+                            >
                               Risk Index
                             </Typography>
-                            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem', color: colors.dark }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ fontWeight: 700, fontSize: '0.75rem', color: colors.dark }}
+                            >
                               {zone.floodRiskIndex}% ({zone.status})
                             </Typography>
                           </Box>
@@ -554,15 +960,24 @@ export function FloodMap({
                     <Box sx={{ mb: 1.25 }}>
                       <Stack direction="row" alignItems="center" spacing={0.5}>
                         <VerifiedUserIcon sx={{ fontSize: 14, color: '#2E7D32' }} />
-                        <Typography variant="caption" sx={{ fontWeight: 600, color: '#2E7D32', fontSize: '0.72rem' }}>
-                          {val.consensusPercentage}% Citizen Consensus ({val.confirmCount} agree, {val.disputeCount} dispute)
+                        <Typography
+                          variant="caption"
+                          sx={{ fontWeight: 600, color: '#2E7D32', fontSize: '0.72rem' }}
+                        >
+                          {val.consensusPercentage}% Citizen Consensus ({val.confirmCount} agree,{' '}
+                          {val.disputeCount} dispute)
                         </Typography>
                       </Stack>
                     </Box>
 
                     {/* Water Level Gauge */}
                     <Box sx={{ bgcolor: '#F4F7FB', p: 1.25, borderRadius: 1.5, mb: 1.5 }}>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{ mb: 0.5 }}
+                      >
                         <Typography variant="caption" sx={{ fontWeight: 600 }}>
                           Water Gauge: {zone.waterLevel.currentMeters.toFixed(2)} m
                         </Typography>
@@ -576,7 +991,10 @@ export function FloodMap({
                           {zone.waterLevel.trend === 'falling' && (
                             <TrendingDownIcon sx={{ fontSize: 15, color: '#388E3C' }} />
                           )}
-                          <Typography variant="caption" sx={{ fontSize: '0.7rem', textTransform: 'capitalize' }}>
+                          <Typography
+                            variant="caption"
+                            sx={{ fontSize: '0.7rem', textTransform: 'capitalize' }}
+                          >
                             {zone.waterLevel.trend}
                           </Typography>
                         </Stack>
@@ -594,7 +1012,15 @@ export function FloodMap({
                           },
                         }}
                       />
-                      <Typography variant="caption" sx={{ fontSize: '0.68rem', color: 'text.secondary', mt: 0.5, display: 'block' }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontSize: '0.68rem',
+                          color: 'text.secondary',
+                          mt: 0.5,
+                          display: 'block',
+                        }}
+                      >
                         Threshold limit: {zone.waterLevel.thresholdMeters.toFixed(2)} m
                       </Typography>
                     </Box>

@@ -37,6 +37,7 @@ export default function FloodDashboardPage() {
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
   const [selectedZoneId, setSelectedZoneId] = React.useState<string | null>(null);
+  const [hoveredZoneId, setHoveredZoneId] = React.useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = React.useState<SeverityLevel | 'all'>('all');
 
   const loadData = React.useCallback(async (showLoadingSpinner = true) => {
@@ -326,6 +327,8 @@ export default function FloodDashboardPage() {
                 zones={filteredZones}
                 selectedZoneId={selectedZoneId}
                 onSelectZone={(id) => setSelectedZoneId(id)}
+                hoveredZoneId={hoveredZoneId}
+                onHoverZone={setHoveredZoneId}
               />
             </Box>
 
@@ -377,6 +380,8 @@ export default function FloodDashboardPage() {
                 selectedSeverity={severityFilter}
                 onClearFilter={() => setSeverityFilter('all')}
                 onRefreshData={() => loadData(false)}
+                hoveredZoneId={hoveredZoneId}
+                onHoverZone={setHoveredZoneId}
               />
             </Paper>
           </Grid>

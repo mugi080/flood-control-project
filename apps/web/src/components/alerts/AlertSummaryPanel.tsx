@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import Grid from '@mui/material/Grid';
 import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
@@ -21,6 +22,7 @@ import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import { FloodZone, SeverityLevel } from '@flood-control/shared';
@@ -35,6 +37,8 @@ interface AlertSummaryPanelProps {
   selectedSeverity: SeverityLevel | 'all';
   onClearFilter: () => void;
   onRefreshData?: () => void;
+  hoveredZoneId?: string | null;
+  onHoverZone?: (zoneId: string | null) => void;
 }
 
 function formatDate(isoString: string): string {
@@ -58,6 +62,8 @@ export function AlertSummaryPanel({
   selectedSeverity,
   onClearFilter,
   onRefreshData,
+  hoveredZoneId,
+  onHoverZone,
 }: AlertSummaryPanelProps) {
   const [searchQuery, setSearchQuery] = React.useState<string>('');
 
@@ -133,6 +139,7 @@ export function AlertSummaryPanel({
         <Stack spacing={2} sx={{ overflowY: 'auto', pr: 0.5, flexGrow: 1 }}>
           {displayedZones.map((zone) => {
             const isSelected = zone.id === selectedZoneId;
+            const isHovered = zone.id === hoveredZoneId;
             const colors = severityColorMap[zone.severity];
             const val = zone.communityValidation;
 
@@ -140,20 +147,28 @@ export function AlertSummaryPanel({
               <Card
                 key={zone.id}
                 onClick={() => onSelectZone(zone.id)}
+                onMouseEnter={() => onHoverZone?.(zone.id)}
+                onMouseLeave={() => onHoverZone?.(null)}
                 sx={{
                   cursor: 'pointer',
                   border: '1.5px solid',
-                  borderColor: isSelected ? colors.main : 'rgba(15, 30, 46, 0.12)',
-                  backgroundColor: '#FFFFFF',
+                  borderColor: isSelected
+                    ? colors.main
+                    : isHovered
+                    ? colors.border
+                    : 'rgba(15, 30, 46, 0.12)',
+                  backgroundColor: isHovered && !isSelected ? `${colors.light}35` : '#FFFFFF',
                   boxShadow: isSelected
                     ? `0 4px 16px ${colors.main}25`
+                    : isHovered
+                    ? '0 4px 14px rgba(15, 30, 46, 0.12)'
                     : '0 1px 3px rgba(15, 30, 46, 0.06)',
-                  transition: 'all 0.2s ease',
+                  transform: isHovered && !isSelected ? 'translateY(-2px)' : 'none',
+                  transition: 'all 0.15s ease',
                   position: 'relative',
                   overflow: 'hidden',
                   '&:hover': {
                     borderColor: colors.main,
-                    boxShadow: '0 4px 12px rgba(15, 30, 46, 0.12)',
                   },
                 }}
               >

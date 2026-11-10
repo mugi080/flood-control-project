@@ -10,6 +10,8 @@ interface FloodMapWrapperProps {
   zones: FloodZone[];
   selectedZoneId: string | null;
   onSelectZone: (zoneId: string | null) => void;
+  hoveredZoneId?: string | null;
+  onHoverZone?: (zoneId: string | null) => void;
 }
 
 // Next.js client-only dynamic boundary to prevent Leaflet SSR "window is not defined" errors
