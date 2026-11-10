@@ -84,36 +84,11 @@ function MapViewController({
 }
 
 /**
- * Compact resting badge label for the flag.
+ * Flag label: just the barangay name, no "Brgy"/"Barangay" prefix.
+ * Poblacion barangays show their number only.
  */
-function getSmartBarangayFlagLabel(zone: FloodZone): string {
-  if (zone.barangayNumber) {
-    return `Brgy ${zone.barangayNumber}`;
-  }
-  const name = zone.barangay;
-  if (name.startsWith('Ibabang ')) {
-    return 'Ib. ' + name.replace('Ibabang ', '');
-  }
-  if (name.startsWith('Ilayang ')) {
-    return 'Il. ' + name.replace('Ilayang ', '');
-  }
-  if (name.startsWith('Mayao ')) {
-    return 'M. ' + name.replace('Mayao ', '');
-  }
-  if (name === 'Gulang-Gulang') {
-    return 'Gulang-G.';
-  }
-  return name;
-}
-
-/**
- * Full official barangay name displayed when the flag becomes longer on hover.
- */
-function getFullBarangayDisplayName(zone: FloodZone): string {
-  if (zone.barangayNumber) {
-    return `Barangay ${zone.barangayNumber} (Poblacion)`;
-  }
-  return `Barangay ${zone.barangay}`;
+function getFlagLabel(zone: FloodZone): string {
+  return zone.barangayNumber ? `${zone.barangayNumber}` : zone.barangay;
 }
 
 /**
@@ -139,18 +114,13 @@ function getZoneInfluenceRadius(zone: FloodZone): number {
 
 /**
  * Creates an architectural flagpole marker.
- * On hover, the flag smoothly extends/lengthens outward to show ONLY the full barangay name.
+ * The flag is static and shows only the barangay name.
  */
-function createFlagMarkerIcon(
-  zone: FloodZone,
-  isSelected: boolean,
-  isHovered: boolean = false
-) {
+function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean) {
   const colors = severityColorMap[zone.severity];
-  const poleHeight = isSelected ? 44 : isHovered ? 40 : 34;
+  const poleHeight = isSelected ? 44 : 34;
   const isExtreme = zone.severity === 'extreme';
-  const shortLabel = getSmartBarangayFlagLabel(zone);
-  const fullLabel = getFullBarangayDisplayName(zone);
+  const label = getFlagLabel(zone);
 
   const statusDotColor =
     zone.severity === 'extreme'
@@ -162,7 +132,7 @@ function createFlagMarkerIcon(
       : '#38BDF8';
 
   const html = `
-    <div class="custom-flag-marker ${isSelected ? 'is-selected' : ''} ${isHovered ? 'is-hovered' : ''}" style="
+    <div class="custom-flag-marker ${isSelected ? 'is-selected' : ''}" style="
       position: relative;
       width: 280px;
       height: ${poleHeight + 12}px;
@@ -184,7 +154,7 @@ function createFlagMarkerIcon(
       "></div>
 
       <!-- Ground Base Pulsing Sonar Ring for Active Alerts or Focus -->
-      ${isExtreme || isSelected || isHovered ? `
+      ${isExtreme || isSelected ? `
         <div style="
           position: absolute;
           left: 12px;
@@ -257,7 +227,7 @@ function createFlagMarkerIcon(
           box-shadow: 0 0 6px ${isSelected ? 'rgba(245, 158, 11, 0.9)' : 'rgba(0,0,0,0.3)'};
         "></div>
 
-        <!-- Municipal Swallowtail Flag Placard that extends longer on hover -->
+        <!-- Municipal Swallowtail Flag Placard (static, shows barangay name only) -->
         <div class="flag-banner-placard" style="
           position: absolute;
           top: 0px;
@@ -287,22 +257,14 @@ function createFlagMarkerIcon(
             display: inline-block;
             flex-shrink: 0;
           "></span>
-          <span class="flag-text-short" style="
+          <span style="
             font-size: ${isSelected ? '10.5px' : '9.5px'};
             font-weight: 800;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             letter-spacing: 0.25px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.6);
             line-height: 1;
-          ">${shortLabel}</span>
-          <span class="flag-text-full" style="
-            font-size: ${isSelected ? '10.5px' : '9.5px'};
-            font-weight: 800;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            letter-spacing: 0.25px;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.6);
-            line-height: 1;
-          ">${fullLabel}</span>
+          ">${label}</span>
         </div>
       </div>
     </div>
@@ -377,35 +339,6 @@ export function FloodMap({
         '& .custom-flag-pin': {
           background: 'transparent',
           border: 'none',
-        },
-        /* Default compact flag styling */
-        '& .flag-text-full': {
-          display: 'none',
-        },
-        '& .flag-text-short': {
-          display: 'inline-block',
-        },
-        '& .flag-banner-placard': {
-          maxWidth: '78px',
-          transition:
-            'max-width 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, transform 0.2s ease',
-          overflow: 'hidden',
-        },
-        /* ON HOVER: The flag extends longer and displays ONLY the full barangay name */
-        '& .custom-flag-marker:hover, & .custom-flag-marker.is-hovered': {
-          zIndex: 9999,
-          transform: 'translateY(-2px)',
-        },
-        '& .custom-flag-marker:hover .flag-banner-placard, & .custom-flag-marker.is-hovered .flag-banner-placard': {
-          maxWidth: '260px',
-          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.45)',
-          paddingRight: '14px',
-        },
-        '& .custom-flag-marker:hover .flag-text-short, & .custom-flag-marker.is-hovered .flag-text-short': {
-          display: 'none',
-        },
-        '& .custom-flag-marker:hover .flag-text-full, & .custom-flag-marker.is-hovered .flag-text-full': {
-          display: 'inline-block',
         },
         '@keyframes flagPulseRing': {
           '0%': {
@@ -824,14 +757,12 @@ export function FloodMap({
                 </>
               )}
 
-              {/* 3. Flagstick Marker: Expands smoothly on hover to show the full name ONLY */}
+              {/* 3. Flagstick Marker: static, shows barangay name only */}
               <Marker
                 position={zone.center}
-                icon={createFlagMarkerIcon(zone, isSelected, isHovered)}
+                icon={createFlagMarkerIcon(zone, isSelected)}
                 eventHandlers={{
                   click: () => onSelectZone(zone.id),
-                  mouseover: () => handleHover(zone.id),
-                  mouseout: () => handleHover(null),
                 }}
               >
                 {/* Full Inspection Popup on Click */}
