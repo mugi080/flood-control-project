@@ -71,7 +71,7 @@ export function SeverityLegend({
             <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
               Flood Severity Legend
             </Typography>
-            <Tooltip title="Click any severity category to filter map polygons and alert cards." arrow>
+            <Tooltip title="Click any severity category to filter map flags, alert radii, and reports." arrow>
               <InfoOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
             </Tooltip>
           </Stack>

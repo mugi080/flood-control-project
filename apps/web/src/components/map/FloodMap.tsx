@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { MapContainer, TileLayer, Polygon, Circle, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -20,7 +20,8 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import RateReviewIcon from '@mui/icons-material/RateReview';
-import LayersIcon from '@mui/icons-material/Layers';
+import FlagIcon from '@mui/icons-material/Flag';
+import AdjustIcon from '@mui/icons-material/Adjust';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import TerrainIcon from '@mui/icons-material/Terrain';
@@ -36,7 +37,7 @@ interface FloodMapProps {
   onSelectZone: (zoneId: string | null) => void;
 }
 
-type MapDisplayMode = 'combined' | 'zones' | 'heatmap';
+type MapDisplayMode = 'radius' | 'flags' | 'heatmap';
 
 function MapViewController({
   selectedZone,
@@ -64,45 +65,165 @@ function MapViewController({
   return null;
 }
 
-function createZoneMarkerIcon(zone: FloodZone, isSelected: boolean) {
+/**
+ * Calculates a clean, non-colliding influence radius (in meters) for each barangay.
+ * Dense Poblacion barangays (Brgy 1 - 11) receive 75m, leaving a clean buffer of 30m - 150m
+ * between neighboring centers so their circular zones never collide or overlap.
+ */
+function getZoneInfluenceRadius(zone: FloodZone): number {
+  if (zone.barangayNumber || zone.areaSquareKm <= 0.25) {
+    return 75; // Downtown Poblacion core
+  }
+  if (zone.areaSquareKm <= 0.60) {
+    return 110;
+  }
+  if (zone.areaSquareKm <= 2.0) {
+    return 160;
+  }
+  if (zone.areaSquareKm <= 4.0) {
+    return 200;
+  }
+  return 240; // Outlying rural barangays
+}
+
+/**
+ * Creates a clean flagpole stick marker planted at the exact barangay coordinate.
+ * Anchored by a ground base pin dot and shadow, rising with a vertical stick/pole,
+ * finial ball, and swallowtail flag banner colored by severity.
+ */
+function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean) {
   const colors = severityColorMap[zone.severity];
-  const size = isSelected ? 42 : 32;
+  const poleHeight = isSelected ? 42 : 34;
+  const isExtreme = zone.severity === 'extreme';
+  const isMajor = zone.severity === 'major';
+
   const label = zone.barangayNumber
     ? `B${zone.barangayNumber}`
-    : zone.barangay.substring(0, 4).toUpperCase();
+    : zone.barangay.length > 8
+    ? zone.barangay.substring(0, 7) + '…'
+    : zone.barangay;
 
   const html = `
-    <div style="
-      background-color: ${colors.main};
-      color: #FFFFFF;
-      width: ${size}px;
-      height: ${size}px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      border: 2px solid #FFFFFF;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
+    <div class="custom-flag-marker ${isSelected ? 'is-selected' : ''}" style="
+      position: relative;
+      width: 90px;
+      height: ${poleHeight + 10}px;
+      cursor: pointer;
     ">
-      <span style="
-        transform: rotate(45deg);
-        font-size: ${isSelected ? '10px' : '9px'};
-        font-weight: 800;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        text-align: center;
-        line-height: 1;
-      ">${label}</span>
+      <!-- Ground Shadow underneath anchor -->
+      <div style="
+        position: absolute;
+        left: 10px;
+        bottom: 0px;
+        width: 14px;
+        height: 5px;
+        background: rgba(15, 23, 42, 0.35);
+        border-radius: 50%;
+        transform: translateX(-50%);
+        filter: blur(1px);
+      "></div>
+
+      <!-- Ground Base Pulsing Ring for Active Alerts / Selected -->
+      ${isExtreme || isSelected ? `
+        <div style="
+          position: absolute;
+          left: 10px;
+          bottom: 2px;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          border: 2px solid ${colors.main};
+          transform: translate(-50%, 50%);
+          animation: flagPulseRing 2s infinite ease-out;
+          pointer-events: none;
+        "></div>
+      ` : ''}
+
+      <!-- Ground Pin Anchor Dot (stick base planted directly on the coordinate) -->
+      <div style="
+        position: absolute;
+        left: 10px;
+        bottom: 1px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: ${colors.main};
+        border: 2px solid #FFFFFF;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        transform: translateX(-50%);
+        z-index: 2;
+      "></div>
+
+      <!-- The Vertical Flagpole Stick -->
+      <div style="
+        position: absolute;
+        left: 10px;
+        bottom: 4px;
+        width: 2.5px;
+        height: ${poleHeight}px;
+        background: linear-gradient(180deg, #64748B 0%, #334155 45%, #0F172A 100%);
+        transform: translateX(-50%);
+        border-radius: 1px;
+        box-shadow: 1px 1px 2px rgba(0,0,0,0.35);
+        z-index: 1;
+      ">
+        <!-- Top Finial Ball -->
+        <div style="
+          position: absolute;
+          top: -4px;
+          left: 50%;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: ${isSelected ? '#F59E0B' : '#E2E8F0'};
+          border: 1px solid #1E293B;
+          transform: translateX(-50%);
+          box-shadow: 0 0 5px ${isSelected ? 'rgba(245, 158, 11, 0.9)' : 'rgba(0,0,0,0.3)'};
+        "></div>
+
+        <!-- Swallowtail Flag Banner Attached to Top of Stick -->
+        <div style="
+          position: absolute;
+          top: 0px;
+          left: 2px;
+          background: linear-gradient(135deg, ${colors.main} 0%, ${colors.dark} 100%);
+          color: #FFFFFF;
+          height: ${isSelected ? 22 : 19}px;
+          padding: 0 12px 0 6px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          border: 1.5px solid #FFFFFF;
+          border-left: none;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+          white-space: nowrap;
+          z-index: 3;
+          clip-path: polygon(0% 0%, 100% 0%, 88% 50%, 100% 100%, 0% 100%);
+        ">
+          <span style="
+            font-size: 8px;
+            opacity: 0.95;
+            line-height: 1;
+          ">${isExtreme ? '⚠' : isMajor ? '▲' : '●'}</span>
+          <span style="
+            font-size: ${isSelected ? '10.5px' : '9.5px'};
+            font-weight: 800;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            letter-spacing: 0.2px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            line-height: 1;
+          ">${label}</span>
+        </div>
+      </div>
     </div>
   `;
 
   return L.divIcon({
     html,
-    className: 'custom-flood-pin',
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size],
-    popupAnchor: [0, -size],
+    className: 'custom-flag-pin',
+    iconSize: [90, poleHeight + 10],
+    iconAnchor: [10, poleHeight + 5], // Bottom of the stick planted at coordinate
+    popupAnchor: [24, -(poleHeight + 6)],
   });
 }
 
@@ -119,7 +240,7 @@ export function FloodMap({
   selectedZoneId,
   onSelectZone,
 }: FloodMapProps) {
-  const [displayMode, setDisplayMode] = React.useState<MapDisplayMode>('combined');
+  const [displayMode, setDisplayMode] = React.useState<MapDisplayMode>('radius');
 
   const selectedZone = React.useMemo(
     () => zones.find((z) => z.id === selectedZoneId),
@@ -144,9 +265,26 @@ export function FloodMap({
           fontFamily: 'inherit',
           zIndex: 1,
         },
-        '& .custom-flood-pin': {
+        '& .custom-flag-pin': {
           background: 'transparent',
           border: 'none',
+        },
+        '& .custom-flag-marker': {
+          transition: 'transform 0.15s ease',
+        },
+        '& .custom-flag-marker:hover': {
+          zIndex: 1000,
+          transform: 'scale(1.08)',
+        },
+        '@keyframes flagPulseRing': {
+          '0%': {
+            transform: 'translate(-50%, 50%) scale(0.5)',
+            opacity: 0.9,
+          },
+          '100%': {
+            transform: 'translate(-50%, 50%) scale(2.2)',
+            opacity: 0,
+          },
         },
       }}
     >
@@ -166,31 +304,37 @@ export function FloodMap({
         }}
       >
         <Stack direction="row" spacing={0.5} alignItems="center">
-          <LayersIcon sx={{ fontSize: 16, color: 'text.secondary', ml: 0.5 }} />
+          <AdjustIcon sx={{ fontSize: 16, color: 'text.secondary', ml: 0.5 }} />
           <ButtonGroup size="small" variant="text">
             <Button
-              onClick={() => setDisplayMode('combined')}
-              variant={displayMode === 'combined' ? 'contained' : 'text'}
+              onClick={() => setDisplayMode('radius')}
+              variant={displayMode === 'radius' ? 'contained' : 'text'}
+              startIcon={<AdjustIcon sx={{ fontSize: 13 }} />}
               sx={{
                 fontSize: '0.7rem',
                 py: 0.3,
                 px: 1,
-                bgcolor: displayMode === 'combined' ? '#0B2545' : undefined,
+                bgcolor: displayMode === 'radius' ? '#0B2545' : undefined,
+                color: displayMode === 'radius' ? '#FFFFFF' : 'inherit',
+                '&:hover': { bgcolor: displayMode === 'radius' ? '#133966' : undefined },
               }}
             >
-              Combined
+              Radii & Flags
             </Button>
             <Button
-              onClick={() => setDisplayMode('zones')}
-              variant={displayMode === 'zones' ? 'contained' : 'text'}
+              onClick={() => setDisplayMode('flags')}
+              variant={displayMode === 'flags' ? 'contained' : 'text'}
+              startIcon={<FlagIcon sx={{ fontSize: 13 }} />}
               sx={{
                 fontSize: '0.7rem',
                 py: 0.3,
                 px: 1,
-                bgcolor: displayMode === 'zones' ? '#0B2545' : undefined,
+                bgcolor: displayMode === 'flags' ? '#0B2545' : undefined,
+                color: displayMode === 'flags' ? '#FFFFFF' : 'inherit',
+                '&:hover': { bgcolor: displayMode === 'flags' ? '#133966' : undefined },
               }}
             >
-              Zones
+              Flags Only
             </Button>
             <Button
               onClick={() => setDisplayMode('heatmap')}
@@ -239,61 +383,71 @@ export function FloodMap({
           const isAboveThreshold =
             zone.waterLevel.currentMeters >= zone.waterLevel.thresholdMeters;
           const heatColor = getHeatColor(zone.floodHeatWeight);
+          const radiusMeters = getZoneInfluenceRadius(zone);
 
           return (
             <React.Fragment key={zone.id}>
-              {/* 1. Heatmap Intensity Circles */}
-              {(displayMode === 'heatmap' || displayMode === 'combined') && (
+              {/* 1. Heatmap Thermal Glow (Only in heatmap mode) */}
+              {displayMode === 'heatmap' && (
+                <Circle
+                  center={zone.center}
+                  radius={radiusMeters * 1.6}
+                  pathOptions={{
+                    color: 'transparent',
+                    fillColor: heatColor,
+                    fillOpacity: zone.floodHeatWeight * 0.35,
+                  }}
+                />
+              )}
+
+              {/* 2. Non-Colliding Circular Flood Influence Radius */}
+              {(displayMode === 'radius' || displayMode === 'heatmap') && (
                 <>
-                  {/* Outer gradient blur ring */}
+                  {/* Outer alert influence circle */}
                   <Circle
                     center={zone.center}
-                    radius={Math.max(zone.areaSquareKm * 280, 450)}
+                    radius={radiusMeters}
                     pathOptions={{
-                      color: 'transparent',
-                      fillColor: heatColor,
-                      fillOpacity: displayMode === 'heatmap' ? zone.floodHeatWeight * 0.45 : zone.floodHeatWeight * 0.28,
+                      color: isSelected ? '#0B2545' : colors.border,
+                      weight: isSelected ? 2.5 : 1.5,
+                      fillColor: colors.main,
+                      fillOpacity: isSelected
+                        ? 0.38
+                        : zone.severity === 'extreme'
+                        ? 0.28
+                        : 0.18,
+                      dashArray: isSelected
+                        ? undefined
+                        : zone.severity === 'minor'
+                        ? '4 3'
+                        : undefined,
+                    }}
+                    eventHandlers={{
+                      click: () => onSelectZone(zone.id),
                     }}
                   />
-                  {/* Inner intense core */}
+
+                  {/* Concentric core epicenter dot */}
                   <Circle
                     center={zone.center}
-                    radius={Math.max(zone.areaSquareKm * 140, 200)}
+                    radius={Math.max(Math.round(radiusMeters * 0.32), 22)}
                     pathOptions={{
-                      color: heatColor,
+                      color: colors.main,
                       weight: 1,
-                      fillColor: heatColor,
-                      fillOpacity: displayMode === 'heatmap' ? zone.floodHeatWeight * 0.65 : zone.floodHeatWeight * 0.4,
+                      fillColor: colors.main,
+                      fillOpacity: isSelected ? 0.65 : 0.45,
+                    }}
+                    eventHandlers={{
+                      click: () => onSelectZone(zone.id),
                     }}
                   />
                 </>
               )}
 
-              {/* 2. Polygon Boundary Zones */}
-              {(displayMode === 'zones' || displayMode === 'combined') && (
-                <Polygon
-                  positions={zone.coordinates}
-                  pathOptions={{
-                    color: colors.border,
-                    fillColor: colors.main,
-                    fillOpacity: isSelected
-                      ? 0.65
-                      : displayMode === 'combined'
-                      ? colors.fillOpacity * 0.75
-                      : colors.fillOpacity,
-                    weight: isSelected ? 3.5 : 2,
-                    dashArray: isSelected ? undefined : '3 3',
-                  }}
-                  eventHandlers={{
-                    click: () => onSelectZone(zone.id),
-                  }}
-                />
-              )}
-
-              {/* 3. Centroid Marker */}
+              {/* 3. Flagstick Marker Planted at Barangay Centroid */}
               <Marker
                 position={zone.center}
-                icon={createZoneMarkerIcon(zone, isSelected)}
+                icon={createFlagMarkerIcon(zone, isSelected)}
                 eventHandlers={{
                   click: () => onSelectZone(zone.id),
                 }}
