@@ -8,27 +8,24 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
-import IconButton from '@mui/material/IconButton';
 import Grid from '@mui/material/Grid';
 import Divider from '@mui/material/Divider';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import SecurityIcon from '@mui/icons-material/Security';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import { FloodZone, SeverityLevel } from '@flood-control/shared';
 import { severityColorMap } from '../../theme/theme';
 import { EmptyFilterState } from '../common/StateViews';
 import { CitizenValidationWidget } from '../validation/CitizenValidationWidget';
+import { BarangaySearch } from '../common/BarangaySearch';
+
+import { LUCENA_BARANGAYS, getBarangayName } from '../../data/lucenaBarangays';
 
 interface AlertSummaryPanelProps {
   zones: FloodZone[];
@@ -67,16 +64,35 @@ export function AlertSummaryPanel({
 }: AlertSummaryPanelProps) {
   const [searchQuery, setSearchQuery] = React.useState<string>('');
 
+  // Barangay name currently chosen in the search dropdown (null when nothing is chosen)
+  const searchValue = React.useMemo(() => {
+    const match = LUCENA_BARANGAYS.find(
+      (name) => name.toLowerCase() === searchQuery.toLowerCase().trim()
+    );
+    return match ?? null;
+  }, [searchQuery]);
+
   const displayedZones = React.useMemo(() => {
-    if (!searchQuery.trim()) return zones;
     const q = searchQuery.toLowerCase().trim();
+    if (!q) return zones;
     return zones.filter(
       (z) =>
-        z.barangay.toLowerCase().includes(q) ||
-        z.name.toLowerCase().includes(q) ||
-        z.code.toLowerCase().includes(q)
+        getBarangayName(z).toLowerCase().includes(q) ||
+        z.barangay.toLowerCase().includes(q)
     );
   }, [zones, searchQuery]);
+
+  const handleSearchChange = React.useCallback(
+    (name: string | null) => {
+      if (!name) {
+        onSelectZone(null);
+        return;
+      }
+      const zone = zones.find((z) => getBarangayName(z) === name);
+      if (zone) onSelectZone(zone.id);
+    },
+    [zones, onSelectZone]
+  );
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -104,21 +120,13 @@ export function AlertSummaryPanel({
           />
         </Stack>
 
-        {/* Barangay Quick Search Filter */}
-        <TextField
-          size="small"
-          fullWidth
-          placeholder="Search by Barangay name (e.g. Cotta, Dalahican, Gulang)..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ mt: 1, '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: '0.8rem' } }}
+        {/* Barangay Search: names only, driven by LUCENA_BARANGAYS */}
+        <BarangaySearch
+          value={searchValue}
+          inputValue={searchQuery}
+          onInputChange={setSearchQuery}
+          onChange={handleSearchChange}
+          sx={{ mt: 1 }}
         />
       </Box>
 

@@ -20,11 +20,7 @@ import ButtonGroup from '@mui/material/ButtonGroup';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
-import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
-import Autocomplete from '@mui/material/Autocomplete';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -37,10 +33,10 @@ import WhatshotIcon from '@mui/icons-material/Whatshot';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
 import { FloodZone, DemonstrationMunicipality } from '@flood-control/shared';
 import { severityColorMap } from '../../theme/theme';
+import { BarangaySearch } from '../common/BarangaySearch';
+import { getBarangayName } from '../../data/lucenaBarangays';
 
 import 'leaflet/dist/leaflet.css';
 
@@ -412,139 +408,14 @@ export function FloodMap({
             </Typography>
           </Box>
 
-          {/* Futuristic Material UI Autocomplete Search */}
-          <Autocomplete
-            size="small"
-            options={zones}
-            getOptionLabel={(option) => `${option.name} (${option.code})`}
-            value={selectedZone || null}
-            onChange={(_, newValue) => onSelectZone(newValue ? newValue.id : null)}
-            sx={{
-              flexGrow: 1,
-              maxWidth: { xs: '100%', sm: 340, md: 400 },
-              '& .MuiOutlinedInput-root': {
-                fontSize: '0.82rem',
-                py: 0.3,
-                borderRadius: 2,
-                bgcolor: 'rgba(255, 255, 255, 0.9)',
-                border: '1px solid rgba(11, 37, 69, 0.12)',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  bgcolor: '#FFFFFF',
-                  borderColor: '#0288D1',
-                },
-                '&.Mui-focused': {
-                  bgcolor: '#FFFFFF',
-                  borderColor: '#0288D1',
-                  boxShadow: '0 0 0 3px rgba(2, 136, 209, 0.2)',
-                },
-                '& fieldset': {
-                  border: 'none',
-                },
-              },
+          {/* Barangay search: names only */}
+          <BarangaySearch
+            value={selectedZone ? getBarangayName(selectedZone) : null}
+            onChange={(name) => {
+              const zone = name ? zones.find((z) => getBarangayName(z) === name) : null;
+              onSelectZone(zone ? zone.id : null);
             }}
-            slotProps={{
-              paper: {
-                elevation: 6,
-                sx: {
-                  borderRadius: 2.5,
-                  mt: 1,
-                  border: '1px solid rgba(11, 37, 69, 0.12)',
-                  backdropFilter: 'blur(16px)',
-                  bgcolor: 'rgba(255, 255, 255, 0.98)',
-                  boxShadow: '0 16px 36px -4px rgba(11, 37, 69, 0.25)',
-                  maxHeight: 320,
-                  '& .MuiAutocomplete-listbox': {
-                    p: 0.75,
-                  },
-                },
-              },
-            }}
-            renderOption={(props, option) => {
-              const colors = severityColorMap[option.severity];
-              return (
-                <li
-                  {...props}
-                  key={option.id}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    marginBottom: '4px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                    sx={{ width: '100%' }}
-                  >
-                    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-                      {/* Futuristic glowing status dot */}
-                      <Box
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          bgcolor: colors.main,
-                          boxShadow: `0 0 8px ${colors.main}`,
-                          flexShrink: 0,
-                        }}
-                      />
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 700,
-                            fontSize: '0.82rem',
-                            color: '#0F172A',
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {option.name}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{ color: '#64748B', fontSize: '0.7rem' }}
-                        >
-                          {option.code} &bull; Water: {option.waterLevel.currentMeters.toFixed(2)}m (
-                          {option.waterLevel.trend})
-                        </Typography>
-                      </Box>
-                    </Stack>
-
-                    <Chip
-                      label={option.severity.toUpperCase()}
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: '0.62rem',
-                        fontWeight: 800,
-                        bgcolor: colors.light,
-                        color: colors.dark,
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 1,
-                        ml: 1,
-                      }}
-                    />
-                  </Stack>
-                </li>
-              );
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder="Search or jump to barangay..."
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 17, color: '#0288D1' }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            )}
+            sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 300 } }}
           />
         </Stack>
 
