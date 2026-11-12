@@ -95,9 +95,13 @@ export function AlertSummaryPanel({
   );
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    // Outer box fills the white card around it (flex: 1); the card stretches to the left column;
+    // the inner box is absolutely positioned so the cards scroll inside it
+    // instead of stretching the page taller than the map.
+    <Box sx={{ position: 'relative', flex: 1, minHeight: { xs: 480, md: 580 } }}>
+    <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
       {/* Panel Header & Summary Count */}
-      <Box sx={{ mb: 1.5 }}>
+      <Box sx={{ mb: 1.5, flexShrink: 0 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
           <Box>
             <Typography variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700 }}>
@@ -144,7 +148,17 @@ export function AlertSummaryPanel({
           }}
         />
       ) : (
-        <Stack spacing={2} sx={{ overflowY: 'auto', pr: 0.5, flexGrow: 1 }}>
+        <Stack
+          spacing={2}
+          sx={{
+            overflowY: 'auto',
+            pr: 0.5,
+            flex: 1,
+            minHeight: 0,
+            // Cards have overflow:hidden, so without this they shrink into thin lines
+            '& > *': { flexShrink: 0 },
+          }}
+        >
           {displayedZones.map((zone) => {
             const isSelected = zone.id === selectedZoneId;
             const isHovered = zone.id === hoveredZoneId;
@@ -429,6 +443,7 @@ export function AlertSummaryPanel({
           })}
         </Stack>
       )}
+    </Box>
     </Box>
   );
 }

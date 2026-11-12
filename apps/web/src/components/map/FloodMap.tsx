@@ -844,7 +844,7 @@ export function FloodMap({
                     </Button>
                   </Box>
                 </Popup>
-              </Marker>
+              </Marker> 
             </React.Fragment>
           );
         })}

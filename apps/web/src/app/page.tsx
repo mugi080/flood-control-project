@@ -359,13 +359,13 @@ export default function FloodDashboardPage() {
           </Grid>
 
           {/* Alert Summary Panel Column with Barangay Search & Validation */}
-          <Grid item xs={12} lg={5} xl={4}>
+          <Grid item xs={12} lg={5} xl={4} sx={{ display: 'flex', flexDirection: 'column' }}>
             <Paper
               elevation={1}
               sx={{
                 p: { xs: 2, sm: 2.5 },
                 borderRadius: 2.5,
-                height: { lg: 'calc(100vh - 210px)' },
+                flexGrow: 1,
                 minHeight: 580,
                 display: 'flex',
                 flexDirection: 'column',
