@@ -5,14 +5,12 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Stack from '@mui/material/Stack';
 import useScrollTrigger from '@mui/material/useScrollTrigger';
 import { keyframes } from '@mui/material/styles';
-import WavesIcon from '@mui/icons-material/Waves';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { DemonstrationMunicipality } from '@flood-control/shared';
@@ -24,14 +22,84 @@ interface HeaderProps {
 const HOTLINE_DISPLAY = '(042) 710-3882';
 const HOTLINE_TEL = '+63427103882';
 
+// One size and one corner radius for everything on the right, so it reads as a single group.
+const CONTROL_HEIGHT = 36;
+const CONTROL_RADIUS = '10px';
+
 const pulse = keyframes`
-  0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
-  70%  { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
   100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
 `;
 
+/** Flood mark: a water drop with two rising wave lines inside. */
+function FloodLogo() {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        placeItems: 'center',
+        flexShrink: 0,
+        width: 40,
+        height: 40,
+        borderRadius: CONTROL_RADIUS,
+        bgcolor: '#0B4F8A',
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)',
+      }}
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M12 2.5c3.2 4 6 7.1 6 10.6a6 6 0 1 1-12 0c0-3.5 2.8-6.6 6-10.6Z"
+          fill="#FFFFFF"
+        />
+        <path
+          d="M7.6 13.6c1.1-.9 2.2-.9 3.2 0s2.2.9 3.2 0 1.7-.7 2.4-.3"
+          stroke="#0B4F8A"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M8.4 16.5c.9-.7 1.8-.7 2.6 0s1.8.7 2.6 0 1.2-.5 1.6-.3"
+          stroke="#38A3DC"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    </Box>
+  );
+}
+
+/** Neutral pill used for status info, matched to the call button's size and radius. */
+function StatusPill({
+  children,
+  hideBelow,
+}: {
+  children: React.ReactNode;
+  hideBelow: 'sm' | 'md';
+}) {
+  return (
+    <Box
+      sx={{
+        display: { xs: 'none', [hideBelow]: 'inline-flex' },
+        alignItems: 'center',
+        gap: 0.875,
+        height: CONTROL_HEIGHT,
+        px: 1.5,
+        borderRadius: CONTROL_RADIUS,
+        bgcolor: '#F8FAFC',
+        border: '1px solid #E2E8F0',
+        color: '#334155',
+        fontSize: '0.8125rem',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
 export function Header({ municipality }: HeaderProps) {
-  // Flat with a hairline border at the top of the page, soft shadow once scrolled.
   const scrolled = useScrollTrigger({ disableHysteresis: true, threshold: 8 });
 
   return (
@@ -40,7 +108,7 @@ export function Header({ municipality }: HeaderProps) {
       elevation={0}
       color="transparent"
       sx={{
-        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        bgcolor: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'saturate(180%) blur(14px)',
         WebkitBackdropFilter: 'saturate(180%) blur(14px)',
         borderBottom: '1px solid',
@@ -51,7 +119,7 @@ export function Header({ municipality }: HeaderProps) {
     >
       <Toolbar
         sx={{
-          minHeight: { xs: 60, md: 68 },
+          minHeight: { xs: 60, md: 64 },
           px: { xs: 2, md: 4 },
           gap: 2,
           maxWidth: 1440,
@@ -61,21 +129,7 @@ export function Header({ municipality }: HeaderProps) {
       >
         {/* Brand */}
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flexGrow: 1 }}>
-          <Box
-            sx={{
-              display: 'grid',
-              placeItems: 'center',
-              flexShrink: 0,
-              width: 40,
-              height: 40,
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #0077B6 0%, #00B4D8 100%)',
-              boxShadow: '0 4px 12px rgba(0, 119, 182, 0.35)',
-            }}
-          >
-            <WavesIcon sx={{ color: '#fff', fontSize: 24 }} />
-          </Box>
-
+          <FloodLogo />
           <Box sx={{ minWidth: 0 }}>
             <Typography
               variant="h6"
@@ -83,8 +137,8 @@ export function Header({ municipality }: HeaderProps) {
               noWrap
               sx={{
                 fontWeight: 700,
-                fontSize: { xs: '1rem', sm: '1.125rem' },
-                lineHeight: 1.2,
+                fontSize: { xs: '1rem', sm: '1.0625rem' },
+                lineHeight: 1.25,
                 letterSpacing: '-0.015em',
                 color: '#0F172A',
               }}
@@ -92,101 +146,78 @@ export function Header({ municipality }: HeaderProps) {
               Lucena City Flood Control
             </Typography>
             <Typography
-              variant="caption"
               noWrap
               sx={{
                 display: { xs: 'none', sm: 'block' },
                 color: '#64748B',
-                lineHeight: 1.3,
                 fontSize: '0.78rem',
+                lineHeight: 1.3,
               }}
             >
-              Lucena CDRRMO · Tayabas Bay & Iyam-Dumacaa River barangay monitoring
+              Citywide barangay monitoring by Lucena CDRRMO
             </Typography>
           </Box>
         </Stack>
 
-        {/* Status + actions */}
-        <Stack direction="row" spacing={1.25} alignItems="center" sx={{ flexShrink: 0 }}>
-          <Chip
-            size="small"
-            label="Live"
-            icon={
-              <Box
-                component="span"
-                sx={{
-                  width: 8,
-                  height: 8,
-                  ml: '10px !important',
-                  borderRadius: '50%',
-                  bgcolor: '#22C55E',
-                  animation: `${pulse} 2s ease-out infinite`,
-                  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-                }}
-              />
-            }
-            sx={{
-              display: { xs: 'none', sm: 'inline-flex' },
-              height: 28,
-              bgcolor: '#F0FDF4',
-              color: '#166534',
-              border: '1px solid #BBF7D0',
-              fontWeight: 600,
-              fontSize: '0.78rem',
-            }}
-          />
+        {/* Right side: same height and radius throughout */}
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+          <StatusPill hideBelow="sm">
+            <Box
+              component="span"
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: '#22C55E',
+                animation: `${pulse} 2s ease-out infinite`,
+                '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+              }}
+            />
+            Live
+          </StatusPill>
 
-          <Chip
-            size="small"
-            label="Citizen validated"
-            icon={<VerifiedIcon sx={{ fontSize: '15px !important', color: '#0077B6 !important' }} />}
-            sx={{
-              display: { xs: 'none', md: 'inline-flex' },
-              height: 28,
-              bgcolor: '#EFF6FF',
-              color: '#1E40AF',
-              border: '1px solid #BFDBFE',
-              fontWeight: 600,
-              fontSize: '0.78rem',
-            }}
-          />
+          <StatusPill hideBelow="md">
+            <VerifiedIcon sx={{ fontSize: 16, color: '#0B4F8A' }} />
+            Citizen validated
+          </StatusPill>
 
-          {/* Desktop: labeled call button */}
           <Button
             href={`tel:${HOTLINE_TEL}`}
             variant="contained"
             disableElevation
-            startIcon={<PhoneInTalkIcon sx={{ fontSize: 18 }} />}
+            startIcon={<PhoneInTalkIcon sx={{ fontSize: 17 }} />}
             sx={{
               display: { xs: 'none', md: 'inline-flex' },
-              borderRadius: '999px',
-              px: 2.25,
-              py: 0.75,
+              height: CONTROL_HEIGHT,
+              px: 1.75,
+              borderRadius: CONTROL_RADIUS,
               textTransform: 'none',
               fontWeight: 600,
-              fontSize: '0.875rem',
-              bgcolor: '#0F172A',
-              color: '#fff',
-              '&:hover': { bgcolor: '#1E293B' },
-              '&:focus-visible': { outline: '2px solid #0077B6', outlineOffset: 2 },
+              fontSize: '0.8125rem',
+              whiteSpace: 'nowrap',
+              bgcolor: '#0B4F8A',
+              '&:hover': { bgcolor: '#093F6E' },
+              '&:focus-visible': { outline: '2px solid #38A3DC', outlineOffset: 2 },
             }}
           >
             Hotline {HOTLINE_DISPLAY}
           </Button>
 
-          {/* Mobile: icon-only call button */}
           <Tooltip title={`Call CDRRMO ${HOTLINE_DISPLAY}`}>
             <IconButton
               href={`tel:${HOTLINE_TEL}`}
               aria-label={`Call CDRRMO hotline ${HOTLINE_DISPLAY}`}
               sx={{
                 display: { xs: 'inline-flex', md: 'none' },
-                bgcolor: '#0F172A',
+                width: CONTROL_HEIGHT,
+                height: CONTROL_HEIGHT,
+                borderRadius: CONTROL_RADIUS,
+                bgcolor: '#0B4F8A',
                 color: '#fff',
-                '&:hover': { bgcolor: '#1E293B' },
+                '&:hover': { bgcolor: '#093F6E' },
               }}
             >
-              <PhoneInTalkIcon fontSize="small" />
+              <PhoneInTalkIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
         </Stack>
