@@ -19,8 +19,9 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import TerrainIcon from '@mui/icons-material/Terrain';
+import { useTheme } from '@mui/material/styles';
 import { FloodZone, SeverityLevel } from '@flood-control/shared';
-import { severityColorMap } from '../../theme/theme';
+import { severityColorMap, getSeverityColors } from '../../theme/theme';
 import { EmptyFilterState } from '../common/StateViews';
 import { CitizenValidationWidget } from '../validation/CitizenValidationWidget';
 import { BarangaySearch } from '../common/BarangaySearch';
@@ -62,6 +63,8 @@ export function AlertSummaryPanel({
   hoveredZoneId,
   onHoverZone,
 }: AlertSummaryPanelProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [searchQuery, setSearchQuery] = React.useState<string>('');
 
   // Barangay name currently chosen in the search dropdown (null when nothing is chosen)
@@ -162,7 +165,7 @@ export function AlertSummaryPanel({
           {displayedZones.map((zone) => {
             const isSelected = zone.id === selectedZoneId;
             const isHovered = zone.id === hoveredZoneId;
-            const colors = severityColorMap[zone.severity];
+            const colors = getSeverityColors(zone.severity, isDark ? 'dark' : 'light');
             const val = zone.communityValidation;
 
             return (
@@ -178,13 +181,13 @@ export function AlertSummaryPanel({
                     ? colors.main
                     : isHovered
                     ? colors.border
-                    : 'rgba(15, 30, 46, 0.12)',
-                  backgroundColor: isHovered && !isSelected ? `${colors.light}35` : '#FFFFFF',
+                    : isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 30, 46, 0.12)',
+                  backgroundColor: isHovered && !isSelected ? colors.light : isDark ? '#111D38' : '#FFFFFF',
                   boxShadow: isSelected
                     ? `0 4px 16px ${colors.main}25`
                     : isHovered
-                    ? '0 4px 14px rgba(15, 30, 46, 0.12)'
-                    : '0 1px 3px rgba(15, 30, 46, 0.06)',
+                    ? isDark ? '0 4px 14px rgba(0, 0, 0, 0.4)' : '0 4px 14px rgba(15, 30, 46, 0.12)'
+                    : isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(15, 30, 46, 0.06)',
                   transform: isHovered && !isSelected ? 'translateY(-2px)' : 'none',
                   transition: 'all 0.15s ease',
                   position: 'relative',

@@ -10,10 +10,11 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Stack from '@mui/material/Stack';
 import useScrollTrigger from '@mui/material/useScrollTrigger';
-import { keyframes } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { DemonstrationMunicipality } from '@flood-control/shared';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   municipality: DemonstrationMunicipality;
@@ -26,14 +27,11 @@ const HOTLINE_TEL = '+63427103882';
 const CONTROL_HEIGHT = 36;
 const CONTROL_RADIUS = '10px';
 
-const pulse = keyframes`
-  0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
-  70%  { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-`;
-
 /** Flood mark: a water drop with two rising wave lines inside. */
 function FloodLogo() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   return (
     <Box
       sx={{
@@ -43,8 +41,11 @@ function FloodLogo() {
         width: 40,
         height: 40,
         borderRadius: CONTROL_RADIUS,
-        bgcolor: '#0B4F8A',
-        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)',
+        bgcolor: isDark ? '#0284C7' : '#0B4F8A',
+        boxShadow: isDark
+          ? '0 0 12px rgba(56, 189, 248, 0.25), inset 0 0 0 1px rgba(255,255,255,0.2)'
+          : 'inset 0 0 0 1px rgba(255,255,255,0.12)',
+        transition: 'background-color 200ms ease',
       }}
     >
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -54,7 +55,7 @@ function FloodLogo() {
         />
         <path
           d="M7.6 13.6c1.1-.9 2.2-.9 3.2 0s2.2.9 3.2 0 1.7-.7 2.4-.3"
-          stroke="#0B4F8A"
+          stroke={isDark ? '#0284C7' : '#0B4F8A'}
           strokeWidth="1.5"
           strokeLinecap="round"
         />
@@ -77,6 +78,9 @@ function StatusPill({
   children: React.ReactNode;
   hideBelow: 'sm' | 'md';
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   return (
     <Box
       sx={{
@@ -86,12 +90,14 @@ function StatusPill({
         height: CONTROL_HEIGHT,
         px: 1.5,
         borderRadius: CONTROL_RADIUS,
-        bgcolor: '#F8FAFC',
-        border: '1px solid #E2E8F0',
-        color: '#334155',
+        bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
+        border: '1px solid',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+        color: isDark ? '#E2E8F0' : '#334155',
         fontSize: '0.8125rem',
         fontWeight: 600,
         whiteSpace: 'nowrap',
+        transition: 'all 200ms ease',
       }}
     >
       {children}
@@ -100,6 +106,8 @@ function StatusPill({
 }
 
 export function Header({ municipality }: HeaderProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const scrolled = useScrollTrigger({ disableHysteresis: true, threshold: 8 });
 
   return (
@@ -108,13 +116,17 @@ export function Header({ municipality }: HeaderProps) {
       elevation={0}
       color="transparent"
       sx={{
-        bgcolor: 'rgba(255, 255, 255, 0.85)',
+        bgcolor: isDark ? 'rgba(17, 29, 56, 0.85)' : 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'saturate(180%) blur(14px)',
         WebkitBackdropFilter: 'saturate(180%) blur(14px)',
         borderBottom: '1px solid',
-        borderColor: scrolled ? 'transparent' : 'rgba(15, 23, 42, 0.08)',
-        boxShadow: scrolled ? '0 4px 24px rgba(15, 23, 42, 0.08)' : 'none',
-        transition: 'box-shadow 200ms ease, border-color 200ms ease',
+        borderColor: scrolled ? 'transparent' : isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)',
+        boxShadow: scrolled
+          ? isDark
+            ? '0 4px 24px rgba(0, 0, 0, 0.5)'
+            : '0 4px 24px rgba(15, 23, 42, 0.08)'
+          : 'none',
+        transition: 'box-shadow 200ms ease, border-color 200ms ease, background-color 200ms ease',
       }}
     >
       <Toolbar
@@ -140,7 +152,8 @@ export function Header({ municipality }: HeaderProps) {
                 fontSize: { xs: '1rem', sm: '1.0625rem' },
                 lineHeight: 1.25,
                 letterSpacing: '-0.015em',
-                color: '#0F172A',
+                color: isDark ? '#F8FAFC' : '#0F172A',
+                transition: 'color 200ms ease',
               }}
             >
               Lucena City Flood Control
@@ -149,9 +162,10 @@ export function Header({ municipality }: HeaderProps) {
               noWrap
               sx={{
                 display: { xs: 'none', sm: 'block' },
-                color: '#64748B',
+                color: isDark ? '#94A3B8' : '#64748B',
                 fontSize: '0.78rem',
                 lineHeight: 1.3,
+                transition: 'color 200ms ease',
               }}
             >
               Citywide barangay monitoring by Lucena CDRRMO
@@ -159,12 +173,13 @@ export function Header({ municipality }: HeaderProps) {
           </Box>
         </Stack>
 
-        {/* Right side: same height and radius throughout */}
+        {/* Right side: theme toggle, validation pill, hotline */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-
+          {/* Quick, accessible theme toggle */}
+          <ThemeToggle />
 
           <StatusPill hideBelow="md">
-            <VerifiedIcon sx={{ fontSize: 16, color: '#0B4F8A' }} />
+            <VerifiedIcon sx={{ fontSize: 16, color: isDark ? '#38BDF8' : '#0B4F8A' }} />
             Citizen validated
           </StatusPill>
 
@@ -182,8 +197,9 @@ export function Header({ municipality }: HeaderProps) {
               fontWeight: 600,
               fontSize: '0.8125rem',
               whiteSpace: 'nowrap',
-              bgcolor: '#0B4F8A',
-              '&:hover': { bgcolor: '#093F6E' },
+              bgcolor: isDark ? '#0284C7' : '#0B4F8A',
+              color: '#FFFFFF',
+              '&:hover': { bgcolor: isDark ? '#0369A1' : '#093F6E' },
               '&:focus-visible': { outline: '2px solid #38A3DC', outlineOffset: 2 },
             }}
           >
@@ -199,9 +215,9 @@ export function Header({ municipality }: HeaderProps) {
                 width: CONTROL_HEIGHT,
                 height: CONTROL_HEIGHT,
                 borderRadius: CONTROL_RADIUS,
-                bgcolor: '#0B4F8A',
+                bgcolor: isDark ? '#0284C7' : '#0B4F8A',
                 color: '#fff',
-                '&:hover': { bgcolor: '#093F6E' },
+                '&:hover': { bgcolor: isDark ? '#0369A1' : '#093F6E' },
               }}
             >
               <PhoneInTalkIcon sx={{ fontSize: 18 }} />

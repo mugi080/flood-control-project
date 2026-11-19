@@ -6,7 +6,20 @@ import { useServerInsertedHTML } from 'next/navigation';
 import { CacheProvider } from '@emotion/react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import theme from './theme';
+import { buildTheme } from './theme';
+import { ThemeModeProvider, useThemeMode } from './ThemeModeContext';
+
+function InnerThemeProvider({ children }: { children: React.ReactNode }) {
+  const { resolvedMode } = useThemeMode();
+  const theme = React.useMemo(() => buildTheme(resolvedMode), [resolvedMode]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
+}
 
 export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
   const [{ cache, flush }] = React.useState(() => {
@@ -51,10 +64,11 @@ export default function ThemeRegistry({ children }: { children: React.ReactNode 
 
   return (
     <CacheProvider value={cache}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </ThemeProvider>
+      <ThemeModeProvider>
+        <InnerThemeProvider>
+          {children}
+        </InnerThemeProvider>
+      </ThemeModeProvider>
     </CacheProvider>
   );
 }

@@ -18,6 +18,7 @@ import LocationCityIcon from '@mui/icons-material/LocationCity';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { useTheme } from '@mui/material/styles';
 import {
   FloodZone,
   MockDataResponse,
@@ -33,6 +34,8 @@ import { ErrorStateView, MapLoadingState } from '../components/common/StateViews
 import { fetchFloodData } from '../services/floodDataService';
 
 export default function FloodDashboardPage() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [data, setData] = React.useState<MockDataResponse | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -173,7 +176,7 @@ export default function FloodDashboardPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#F4F7FB' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', transition: 'background-color 200ms ease' }}>
       {/* Top Municipal Navigation Bar */}
       <Header municipality={data.municipality} />
 
@@ -195,8 +198,8 @@ export default function FloodDashboardPage() {
                     sx={{
                       p: 1,
                       borderRadius: 1.5,
-                      bgcolor: '#E3F2FD',
-                      color: '#0D47A1',
+                      bgcolor: isDark ? 'rgba(56, 189, 248, 0.15)' : '#E3F2FD',
+                      color: isDark ? '#38BDF8' : '#0D47A1',
                       display: 'flex',
                     }}
                   >
@@ -223,8 +226,8 @@ export default function FloodDashboardPage() {
                     sx={{
                       p: 1,
                       borderRadius: 1.5,
-                      bgcolor: '#FFEBEE',
-                      color: '#C62828',
+                      bgcolor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FFEBEE',
+                      color: isDark ? '#F87171' : '#C62828',
                       display: 'flex',
                     }}
                   >
@@ -236,7 +239,7 @@ export default function FloodDashboardPage() {
                     </Typography>
                     <Typography
                       variant="h6"
-                      sx={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.1, color: '#C62828' }}
+                      sx={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.1, color: isDark ? '#F87171' : '#C62828' }}
                     >
                       {zoneCounts.extreme + zoneCounts.major} High Risk
                     </Typography>
@@ -254,8 +257,8 @@ export default function FloodDashboardPage() {
                     sx={{
                       p: 1,
                       borderRadius: 1.5,
-                      bgcolor: '#E8F5E9',
-                      color: '#2E7D32',
+                      bgcolor: isDark ? 'rgba(34, 197, 94, 0.15)' : '#E8F5E9',
+                      color: isDark ? '#4ADE80' : '#2E7D32',
                       display: 'flex',
                     }}
                   >
@@ -265,7 +268,7 @@ export default function FloodDashboardPage() {
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                       Citizen Validations
                     </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.1, color: '#2E7D32' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.1, color: isDark ? '#4ADE80' : '#2E7D32' }}>
                       {totalCitizenValidations} Verified Reports
                     </Typography>
                   </Box>
@@ -282,8 +285,8 @@ export default function FloodDashboardPage() {
                     sx={{
                       p: 1,
                       borderRadius: 1.5,
-                      bgcolor: '#E0F2F1',
-                      color: '#00695C',
+                      bgcolor: isDark ? 'rgba(20, 184, 166, 0.15)' : '#E0F2F1',
+                      color: isDark ? '#2DD4BF' : '#00695C',
                       display: 'flex',
                     }}
                   >
@@ -333,7 +336,7 @@ export default function FloodDashboardPage() {
             </Box>
 
             {/* Map metadata and cartography / citypopulation notes */}
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: '#FFFFFF' }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.paper' }}>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
                 justifyContent="space-between"
@@ -346,7 +349,7 @@ export default function FloodDashboardPage() {
                     href="https://www.citypopulation.de/en/philippines/lucena/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    sx={{ color: '#0288D1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 0.3 }}
+                    sx={{ color: isDark ? '#38BDF8' : '#0288D1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 0.3 }}
                   >
                     CityPopulation.de Lucena <OpenInNewIcon sx={{ fontSize: 11 }} />
                   </Link>
@@ -370,7 +373,7 @@ export default function FloodDashboardPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
-                bgcolor: '#FFFFFF',
+                bgcolor: 'background.paper',
               }}
             >
               <AlertSummaryPanel

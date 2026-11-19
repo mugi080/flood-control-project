@@ -33,8 +33,9 @@ import WhatshotIcon from '@mui/icons-material/Whatshot';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import { useTheme } from '@mui/material/styles';
 import { FloodZone, DemonstrationMunicipality } from '@flood-control/shared';
-import { severityColorMap } from '../../theme/theme';
+import { severityColorMap, getSeverityColors } from '../../theme/theme';
 import { BarangaySearch } from '../common/BarangaySearch';
 import { getBarangayName } from '../../data/lucenaBarangays';
 
@@ -112,8 +113,8 @@ function getZoneInfluenceRadius(zone: FloodZone): number {
  * Creates an architectural flagpole marker.
  * The flag is static and shows only the barangay name.
  */
-function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean) {
-  const colors = severityColorMap[zone.severity];
+function createFlagMarkerIcon(zone: FloodZone, isSelected: boolean, isDark = false) {
+  const colors = getSeverityColors(zone.severity, isDark ? 'dark' : 'light');
   const poleHeight = isSelected ? 44 : 34;
   const isExtreme = zone.severity === 'extreme';
   const label = getFlagLabel(zone);
@@ -290,6 +291,8 @@ export function FloodMap({
   hoveredZoneId: externalHoveredId,
   onHoverZone,
 }: FloodMapProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [displayMode, setDisplayMode] = React.useState<MapDisplayMode>('radius');
   const [internalHoveredId, setInternalHoveredId] = React.useState<string | null>(null);
   const [resetCount, setResetCount] = React.useState<number>(0);
@@ -323,8 +326,8 @@ export function FloodMap({
         position: 'relative',
         borderRadius: 2.5,
         overflow: 'hidden',
-        border: '1px solid rgba(15, 30, 46, 0.12)',
-        boxShadow: '0 2px 10px rgba(11, 37, 69, 0.08)',
+        border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 30, 46, 0.12)'}`,
+        boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.4)' : '0 2px 10px rgba(11, 37, 69, 0.08)',
         '& .leaflet-container': {
           width: '100%',
           height: '100%',
@@ -359,15 +362,16 @@ export function FloodMap({
           zIndex: 1000,
           p: 0.75,
           borderRadius: 2.5,
-          bgcolor: 'rgba(255, 255, 255, 0.94)',
+          bgcolor: isDark ? 'rgba(17, 29, 56, 0.94)' : 'rgba(255, 255, 255, 0.94)',
           backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(11, 37, 69, 0.12)',
-          boxShadow: '0 8px 32px rgba(11, 37, 69, 0.12)',
+          border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(11, 37, 69, 0.12)'}`,
+          boxShadow: isDark ? '0 8px 32px rgba(0, 0, 0, 0.5)' : '0 8px 32px rgba(11, 37, 69, 0.12)',
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
           alignItems: { xs: 'stretch', sm: 'center' },
           justifyContent: 'space-between',
           gap: 1,
+          transition: 'all 200ms ease',
         }}
       >
         {/* Left Side: Live Telemetry Indicator & Futuristic Barangay Search Autocomplete */}
@@ -380,8 +384,8 @@ export function FloodMap({
               px: 1.25,
               py: 0.6,
               borderRadius: 2,
-              bgcolor: 'rgba(15, 23, 42, 0.05)',
-              border: '1px solid rgba(15, 23, 42, 0.08)',
+              bgcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(15, 23, 42, 0.05)',
+              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.08)'}`,
               flexShrink: 0,
             }}
           >
@@ -399,7 +403,7 @@ export function FloodMap({
               sx={{
                 fontWeight: 800,
                 fontSize: '0.68rem',
-                color: '#0F172A',
+                color: isDark ? '#F1F5F9' : '#0F172A',
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
               }}
@@ -426,16 +430,16 @@ export function FloodMap({
               size="small"
               onClick={handleResetView}
               sx={{
-                border: '1px solid rgba(11, 37, 69, 0.14)',
+                border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(11, 37, 69, 0.14)'}`,
                 borderRadius: 2,
                 p: 0.65,
-                color: '#0F172A',
-                bgcolor: '#FFFFFF',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                color: isDark ? '#F1F5F9' : '#0F172A',
+                bgcolor: isDark ? '#16233F' : '#FFFFFF',
+                boxShadow: isDark ? '0 1px 4px rgba(0,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.05)',
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  bgcolor: '#F1F5F9',
-                  borderColor: '#0288D1',
+                  bgcolor: isDark ? '#1E3258' : '#F1F5F9',
+                  borderColor: isDark ? '#38BDF8' : '#0288D1',
                 },
               }}
             >
@@ -446,7 +450,7 @@ export function FloodMap({
           <ButtonGroup
             size="small"
             variant="text"
-            sx={{ bgcolor: '#F1F5F9', borderRadius: 2, p: 0.25 }}
+            sx={{ bgcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9', borderRadius: 2, p: 0.25 }}
           >
             <Button
               onClick={() => setDisplayMode('radius')}
@@ -456,12 +460,16 @@ export function FloodMap({
                 fontSize: '0.7rem',
                 py: 0.4,
                 px: 1.1,
-                bgcolor: displayMode === 'radius' ? '#0B2545' : undefined,
-                color: displayMode === 'radius' ? '#FFFFFF' : '#334155',
+                bgcolor: displayMode === 'radius' ? (isDark ? '#0284C7' : '#0B2545') : undefined,
+                color: displayMode === 'radius' ? '#FFFFFF' : isDark ? '#CBD5E1' : '#334155',
                 fontWeight: 700,
                 borderRadius: '7px !important',
                 boxShadow: displayMode === 'radius' ? '0 2px 6px rgba(11, 37, 69, 0.2)' : 'none',
-                '&:hover': { bgcolor: displayMode === 'radius' ? '#133966' : '#E2E8F0' },
+                '&:hover': {
+                  bgcolor: displayMode === 'radius'
+                    ? (isDark ? '#0369A1' : '#133966')
+                    : isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0',
+                },
               }}
             >
               Radii & Flags
@@ -474,12 +482,16 @@ export function FloodMap({
                 fontSize: '0.7rem',
                 py: 0.4,
                 px: 1.1,
-                bgcolor: displayMode === 'flags' ? '#0B2545' : undefined,
-                color: displayMode === 'flags' ? '#FFFFFF' : '#334155',
+                bgcolor: displayMode === 'flags' ? (isDark ? '#0284C7' : '#0B2545') : undefined,
+                color: displayMode === 'flags' ? '#FFFFFF' : isDark ? '#CBD5E1' : '#334155',
                 fontWeight: 700,
                 borderRadius: '7px !important',
                 boxShadow: displayMode === 'flags' ? '0 2px 6px rgba(11, 37, 69, 0.2)' : 'none',
-                '&:hover': { bgcolor: displayMode === 'flags' ? '#133966' : '#E2E8F0' },
+                '&:hover': {
+                  bgcolor: displayMode === 'flags'
+                    ? (isDark ? '#0369A1' : '#133966')
+                    : isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0',
+                },
               }}
             >
               Flags Only
@@ -513,7 +525,7 @@ export function FloodMap({
           bottom: 12,
           left: 12,
           zIndex: 1000,
-          bgcolor: 'rgba(15, 23, 42, 0.88)',
+          bgcolor: isDark ? 'rgba(11, 19, 43, 0.90)' : 'rgba(15, 23, 42, 0.88)',
           color: '#FFFFFF',
           px: 1.25,
           py: 0.5,
@@ -537,8 +549,17 @@ export function FloodMap({
         scrollWheelZoom={true}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &bull; Lucena City 33 Barangays'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={isDark ? 'carto-dark-matter' : 'osm-standard'}
+          attribution={
+            isDark
+              ? '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a> &bull; Lucena City 33 Barangays'
+              : '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &bull; Lucena City 33 Barangays'
+          }
+          url={
+            isDark
+              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+          }
           maxZoom={18}
         />
 
@@ -552,7 +573,7 @@ export function FloodMap({
         {zones.map((zone) => {
           const isSelected = zone.id === selectedZoneId;
           const isHovered = zone.id === activeHoveredId;
-          const colors = severityColorMap[zone.severity];
+          const colors = getSeverityColors(zone.severity, isDark ? 'dark' : 'light');
           const val = zone.communityValidation;
           const waterLevelRatio = Math.min(
             (zone.waterLevel.currentMeters / (zone.waterLevel.thresholdMeters * 1.5)) * 100,
@@ -631,7 +652,7 @@ export function FloodMap({
               {/* 3. Flagstick Marker: static, shows barangay name only */}
               <Marker
                 position={zone.center}
-                icon={createFlagMarkerIcon(zone, isSelected)}
+                icon={createFlagMarkerIcon(zone, isSelected, isDark)}
                 eventHandlers={{
                   click: () => onSelectZone(zone.id),
                 }}
@@ -653,7 +674,7 @@ export function FloodMap({
                           fontSize: '0.72rem',
                           height: 22,
                           bgcolor: colors.main,
-                          color: '#FFFFFF',
+                          color: colors.contrastText,
                         }}
                       />
                       <Chip
@@ -672,7 +693,7 @@ export function FloodMap({
 
                     <Typography
                       variant="subtitle2"
-                      sx={{ fontWeight: 700, lineHeight: 1.25, mb: 0.5 }}
+                      sx={{ fontWeight: 700, lineHeight: 1.25, mb: 0.5, color: isDark ? '#F1F5F9' : '#0F1E2E' }}
                     >
                       {zone.name}
                     </Typography>
@@ -682,8 +703,8 @@ export function FloodMap({
                       sx={{
                         p: 1.25,
                         borderRadius: 1.5,
-                        bgcolor: '#F8FAFC',
-                        border: '1px solid rgba(0,0,0,0.06)',
+                        bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
+                        border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0,0,0,0.06)'}`,
                         mb: 1.25,
                       }}
                     >
@@ -698,7 +719,7 @@ export function FloodMap({
                               >
                                 Land Area
                               </Typography>
-                              <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem', color: isDark ? '#F1F5F9' : '#0F1E2E' }}>
                                 {zone.areaSquareKm} km² ({zone.landAreaHectares} ha)
                               </Typography>
                             </Box>
@@ -715,7 +736,7 @@ export function FloodMap({
                               >
                                 Elevation
                               </Typography>
-                              <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem', color: isDark ? '#F1F5F9' : '#0F1E2E' }}>
                                 {zone.elevationMeters} m above sea
                               </Typography>
                             </Box>
@@ -732,7 +753,7 @@ export function FloodMap({
                               >
                                 Population
                               </Typography>
-                              <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.75rem', color: isDark ? '#F1F5F9' : '#0F1E2E' }}>
                                 ~{zone.affectedPopulationEstimate.toLocaleString()}
                               </Typography>
                             </Box>
@@ -761,10 +782,10 @@ export function FloodMap({
                     {/* Community Validation pill */}
                     <Box sx={{ mb: 1.25 }}>
                       <Stack direction="row" alignItems="center" spacing={0.5}>
-                        <VerifiedUserIcon sx={{ fontSize: 14, color: '#2E7D32' }} />
+                        <VerifiedUserIcon sx={{ fontSize: 14, color: isDark ? '#4ADE80' : '#2E7D32' }} />
                         <Typography
                           variant="caption"
-                          sx={{ fontWeight: 600, color: '#2E7D32', fontSize: '0.72rem' }}
+                          sx={{ fontWeight: 600, color: isDark ? '#4ADE80' : '#2E7D32', fontSize: '0.72rem' }}
                         >
                           {val.consensusPercentage}% Citizen Consensus ({val.confirmCount} agree,{' '}
                           {val.disputeCount} dispute)
@@ -773,29 +794,29 @@ export function FloodMap({
                     </Box>
 
                     {/* Water Level Gauge */}
-                    <Box sx={{ bgcolor: '#F4F7FB', p: 1.25, borderRadius: 1.5, mb: 1.5 }}>
+                    <Box sx={{ bgcolor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F4F7FB', p: 1.25, borderRadius: 1.5, mb: 1.5 }}>
                       <Stack
                         direction="row"
                         alignItems="center"
                         justifyContent="space-between"
                         sx={{ mb: 0.5 }}
                       >
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#F1F5F9' : '#0F1E2E' }}>
                           Water Gauge: {zone.waterLevel.currentMeters.toFixed(2)} m
                         </Typography>
                         <Stack direction="row" alignItems="center" spacing={0.25}>
                           {zone.waterLevel.trend === 'rising' && (
-                            <TrendingUpIcon sx={{ fontSize: 15, color: '#D32F2F' }} />
+                            <TrendingUpIcon sx={{ fontSize: 15, color: '#EF4444' }} />
                           )}
                           {zone.waterLevel.trend === 'steady' && (
-                            <TrendingFlatIcon sx={{ fontSize: 15, color: '#F57F17' }} />
+                            <TrendingFlatIcon sx={{ fontSize: 15, color: '#F59E0B' }} />
                           )}
                           {zone.waterLevel.trend === 'falling' && (
-                            <TrendingDownIcon sx={{ fontSize: 15, color: '#388E3C' }} />
+                            <TrendingDownIcon sx={{ fontSize: 15, color: '#10B981' }} />
                           )}
                           <Typography
                             variant="caption"
-                            sx={{ fontSize: '0.7rem', textTransform: 'capitalize' }}
+                            sx={{ fontSize: '0.7rem', textTransform: 'capitalize', color: isDark ? '#CBD5E1' : undefined }}
                           >
                             {zone.waterLevel.trend}
                           </Typography>
@@ -808,9 +829,9 @@ export function FloodMap({
                         sx={{
                           height: 6,
                           borderRadius: 3,
-                          bgcolor: '#CFD8DC',
+                          bgcolor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CFD8DC',
                           '& .MuiLinearProgress-bar': {
-                            bgcolor: isAboveThreshold ? colors.main : '#0288D1',
+                            bgcolor: isAboveThreshold ? colors.main : isDark ? '#38BDF8' : '#0288D1',
                           },
                         }}
                       />
@@ -837,7 +858,12 @@ export function FloodMap({
                         fontSize: '0.72rem',
                         py: 0.5,
                         textTransform: 'none',
-                        bgcolor: isSelected ? '#0B2545' : undefined,
+                        bgcolor: isSelected ? (isDark ? '#0284C7' : '#0B2545') : undefined,
+                        color: isSelected ? '#FFFFFF' : isDark ? '#38BDF8' : undefined,
+                        borderColor: isDark && !isSelected ? 'rgba(56, 189, 248, 0.5)' : undefined,
+                        '&:hover': {
+                          bgcolor: isSelected ? (isDark ? '#0369A1' : '#133966') : isDark ? 'rgba(56, 189, 248, 0.08)' : undefined,
+                        },
                       }}
                     >
                       {isSelected ? 'View Citizen Validation' : 'Inspect Area & Rate Alert'}
