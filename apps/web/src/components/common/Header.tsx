@@ -161,20 +161,7 @@ export function Header({ municipality }: HeaderProps) {
 
         {/* Right side: same height and radius throughout */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-          <StatusPill hideBelow="sm">
-            <Box
-              component="span"
-              sx={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                bgcolor: '#22C55E',
-                animation: `${pulse} 2s ease-out infinite`,
-                '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-              }}
-            />
-            Live
-          </StatusPill>
+
 
           <StatusPill hideBelow="md">
             <VerifiedIcon sx={{ fontSize: 16, color: '#0B4F8A' }} />

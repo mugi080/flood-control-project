@@ -350,7 +350,7 @@ export function CitizenValidationWidget({ zone, onZoneUpdated }: CitizenValidati
         </Box>
       )}
 
-      {/* Ground Report Submission Modal Dialog */}
+
       <Dialog
         open={dialogOpen}
         onClose={() => !submittingReport && setDialogOpen(false)}
