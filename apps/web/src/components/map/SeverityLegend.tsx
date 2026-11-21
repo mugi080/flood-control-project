@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
 import Tooltip from '@mui/material/Tooltip';
+import { useTheme, alpha, lighten } from '@mui/material/styles';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { SeverityLevel } from '@flood-control/shared';
 import { severityColorMap } from '../../theme/theme';
@@ -57,12 +58,18 @@ export function SeverityLegend({
   onSelectSeverity,
   zoneCounts,
 }: SeverityLegendProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
+  const idleBg = isDark ? 'rgba(255, 255, 255, 0.04)' : '#FAFCFE';
+  const idleBorder = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
+
   return (
     <Card
       elevation={1}
       sx={{
         borderRadius: 2,
-        backgroundColor: '#FFFFFF',
+        bgcolor: 'background.paper',
       }}
     >
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
@@ -97,12 +104,24 @@ export function SeverityLegend({
             const colors = severityColorMap[item.severity];
             const count = zoneCounts[item.severity] || 0;
 
+            // Pastel fills only work on light surfaces; use a tint of the severity color on dark.
+            const activeBg = isDark ? alpha(colors.main, 0.2) : colors.light;
+            const labelColor = isDark ? lighten(colors.main, 0.5) : colors.dark;
+            const toggle = () => onSelectSeverity(isSelected ? 'all' : item.severity);
+
             return (
               <Box
                 key={item.severity}
-                onClick={() =>
-                  onSelectSeverity(isSelected ? 'all' : item.severity)
-                }
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
+                onClick={toggle}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggle();
+                  }
+                }}
                 sx={{
                   flex: 1,
                   display: 'flex',
@@ -112,12 +131,16 @@ export function SeverityLegend({
                   borderRadius: 1.5,
                   cursor: 'pointer',
                   border: '1px solid',
-                  borderColor: isSelected ? colors.main : 'rgba(0, 0, 0, 0.08)',
-                  backgroundColor: isSelected ? colors.light : '#FAFCFE',
+                  borderColor: isSelected ? colors.main : idleBorder,
+                  backgroundColor: isSelected ? activeBg : idleBg,
                   transition: 'all 0.15s ease-in-out',
                   '&:hover': {
                     borderColor: colors.main,
-                    backgroundColor: colors.light,
+                    backgroundColor: activeBg,
+                  },
+                  '&:focus-visible': {
+                    outline: `2px solid ${colors.main}`,
+                    outlineOffset: 2,
                   },
                 }}
               >
@@ -138,7 +161,7 @@ export function SeverityLegend({
                       display: 'block',
                       fontWeight: 700,
                       lineHeight: 1.2,
-                      color: colors.dark,
+                      color: labelColor,
                     }}
                   >
                     {item.label} ({count})

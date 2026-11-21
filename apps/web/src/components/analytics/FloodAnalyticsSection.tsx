@@ -11,8 +11,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
-import Tooltip from '@mui/material/Tooltip';
-import Button from '@mui/material/Button';
+import { useTheme, alpha, lighten } from '@mui/material/styles';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import PieChartIcon from '@mui/icons-material/PieChart';
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -35,7 +34,39 @@ export function FloodAnalyticsSection({
   onSelectZone,
   selectedZoneId,
 }: FloodAnalyticsSectionProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [activeTab, setActiveTab] = React.useState<number>(0);
+
+  // ---- Theme-aware color tokens (replaces the hardcoded light-only hex values) ----
+  const c = isDark
+    ? {
+        border: 'rgba(255, 255, 255, 0.12)',
+        subtle: 'rgba(255, 255, 255, 0.04)', // was #FAFCFE / #F8FAFC
+        selected: 'rgba(79, 195, 247, 0.14)', // was #F0F7FF
+        hover: 'rgba(255, 255, 255, 0.07)', // was #F4F9FF
+        track: 'rgba(255, 255, 255, 0.14)', // was #E0E7ED / #ECEFF1
+        icon: '#90CAF9', // was #0B2545
+        blue: '#4FC3F7', // was #0288D1
+      }
+    : {
+        border: 'rgba(15, 30, 46, 0.08)',
+        subtle: '#FAFCFE',
+        selected: '#F0F7FF',
+        hover: '#F4F9FF',
+        track: '#E0E7ED',
+        icon: '#0B2545',
+        blue: '#0288D1',
+      };
+
+  // Brighten saturated text colors on dark so they keep their contrast.
+  const tone = (hex: string) => (isDark ? lighten(hex, 0.45) : hex);
+
+  // Severity badge colors: the pastel "light" fills only work on white surfaces.
+  const sevBadge = (colors: { main: string; light: string; dark: string }) => ({
+    bgcolor: isDark ? alpha(colors.main, 0.22) : colors.light,
+    color: isDark ? lighten(colors.main, 0.5) : colors.dark,
+  });
 
   // Compute metrics
   const totalArea = React.useMemo(
@@ -94,8 +125,9 @@ export function FloodAnalyticsSection({
       elevation={1}
       sx={{
         borderRadius: 2.5,
-        backgroundColor: '#FFFFFF',
-        border: '1px solid rgba(15, 30, 46, 0.08)',
+        bgcolor: 'background.paper',
+        border: '1px solid',
+        borderColor: c.border,
         mb: 3,
       }}
     >
@@ -110,7 +142,7 @@ export function FloodAnalyticsSection({
         >
           <Box>
             <Stack direction="row" alignItems="center" spacing={1}>
-              <AssessmentIcon sx={{ color: '#0B2545', fontSize: 24 }} />
+              <AssessmentIcon sx={{ color: c.icon, fontSize: 24 }} />
               <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
                 Lucena City Flood Analytics & Comparative Insights
               </Typography>
@@ -166,12 +198,12 @@ export function FloodAnalyticsSection({
                         borderRadius: 2,
                         cursor: 'pointer',
                         border: '1.5px solid',
-                        borderColor: isSelected ? colors.main : 'rgba(0,0,0,0.08)',
-                        bgcolor: isSelected ? '#F0F7FF' : '#FAFCFE',
+                        borderColor: isSelected ? colors.main : c.border,
+                        bgcolor: isSelected ? c.selected : c.subtle,
                         transition: 'all 0.15s ease',
                         '&:hover': {
                           borderColor: colors.main,
-                          bgcolor: '#F4F9FF',
+                          bgcolor: c.hover,
                         },
                       }}
                     >
@@ -187,16 +219,15 @@ export function FloodAnalyticsSection({
                               height: 18,
                               fontSize: '0.62rem',
                               fontWeight: 700,
-                              bgcolor: colors.light,
-                              color: colors.dark,
+                              ...sevBadge(colors),
                             }}
                           />
                         </Stack>
 
                         <Stack direction="row" spacing={0.3} alignItems="center">
-                          {zone.waterLevel.trend === 'rising' && <TrendingUpIcon sx={{ fontSize: 15, color: '#D32F2F' }} />}
-                          {zone.waterLevel.trend === 'steady' && <TrendingFlatIcon sx={{ fontSize: 15, color: '#F57F17' }} />}
-                          {zone.waterLevel.trend === 'falling' && <TrendingDownIcon sx={{ fontSize: 15, color: '#388E3C' }} />}
+                          {zone.waterLevel.trend === 'rising' && <TrendingUpIcon sx={{ fontSize: 15, color: tone('#D32F2F') }} />}
+                          {zone.waterLevel.trend === 'steady' && <TrendingFlatIcon sx={{ fontSize: 15, color: tone('#F57F17') }} />}
+                          {zone.waterLevel.trend === 'falling' && <TrendingDownIcon sx={{ fontSize: 15, color: tone('#388E3C') }} />}
                           <Typography variant="caption" sx={{ fontSize: '0.68rem', fontWeight: 600, textTransform: 'capitalize' }}>
                             {zone.waterLevel.trend}
                           </Typography>
@@ -205,7 +236,7 @@ export function FloodAnalyticsSection({
 
                       {/* Gauge Bar */}
                       <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.25 }}>
-                        <Typography variant="caption" sx={{ color: colors.dark, fontWeight: 700, fontSize: '0.75rem' }}>
+                        <Typography variant="caption" sx={{ color: sevBadge(colors).color, fontWeight: 700, fontSize: '0.75rem' }}>
                           Current: {zone.waterLevel.currentMeters.toFixed(2)} m
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem' }}>
@@ -219,9 +250,9 @@ export function FloodAnalyticsSection({
                         sx={{
                           height: 7,
                           borderRadius: 4,
-                          bgcolor: '#E0E7ED',
+                          bgcolor: c.track,
                           '& .MuiLinearProgress-bar': {
-                            bgcolor: isOverThreshold ? colors.main : '#0288D1',
+                            bgcolor: isOverThreshold ? colors.main : c.blue,
                           },
                         }}
                       />
@@ -263,12 +294,13 @@ export function FloodAnalyticsSection({
                       sx={{
                         p: 1.75,
                         borderRadius: 2,
+                        borderColor: c.border,
                         borderLeft: `5px solid ${colors.main}`,
-                        bgcolor: '#FFFFFF',
+                        bgcolor: 'background.paper',
                       }}
                     >
                       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', color: colors.dark }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', color: sevBadge(colors).color }}>
                           {sev}
                         </Typography>
                         <Chip
@@ -277,8 +309,7 @@ export function FloodAnalyticsSection({
                           sx={{
                             fontWeight: 700,
                             fontSize: '0.68rem',
-                            bgcolor: colors.light,
-                            color: colors.dark,
+                            ...sevBadge(colors),
                           }}
                         />
                       </Stack>
@@ -296,7 +327,7 @@ export function FloodAnalyticsSection({
                         <LinearProgress
                           variant="determinate"
                           value={areaPct}
-                          sx={{ height: 6, borderRadius: 3, bgcolor: '#ECEFF1', '& .MuiLinearProgress-bar': { bgcolor: colors.main } }}
+                          sx={{ height: 6, borderRadius: 3, bgcolor: c.track, '& .MuiLinearProgress-bar': { bgcolor: colors.main } }}
                         />
                       </Box>
 
@@ -313,7 +344,7 @@ export function FloodAnalyticsSection({
                         <LinearProgress
                           variant="determinate"
                           value={popPct}
-                          sx={{ height: 6, borderRadius: 3, bgcolor: '#ECEFF1', '& .MuiLinearProgress-bar': { bgcolor: colors.main } }}
+                          sx={{ height: 6, borderRadius: 3, bgcolor: c.track, '& .MuiLinearProgress-bar': { bgcolor: colors.main } }}
                         />
                       </Box>
                     </Card>
@@ -333,7 +364,7 @@ export function FloodAnalyticsSection({
 
             <Grid container spacing={2}>
               <Grid item xs={12} md={5}>
-                <Card variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: '#FAFCFE', height: '100%' }}>
+                <Card variant="outlined" sx={{ p: 2, borderRadius: 2, borderColor: c.border, bgcolor: c.subtle, height: '100%' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
                     Street Depth Classification
                   </Typography>
@@ -351,12 +382,12 @@ export function FloodAnalyticsSection({
                         <Box key={d.key}>
                           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.25 }}>
                             <Stack direction="row" spacing={0.75} alignItems="center">
-                              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: d.color }} />
+                              <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: tone(d.color) }} />
                               <Typography variant="caption" sx={{ fontWeight: 600 }}>
                                 {d.label}
                               </Typography>
                             </Stack>
-                            <Typography variant="caption" sx={{ fontWeight: 700, color: d.color }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: tone(d.color) }}>
                               {count} reports
                             </Typography>
                           </Stack>
@@ -371,7 +402,7 @@ export function FloodAnalyticsSection({
               </Grid>
 
               <Grid item xs={12} md={7}>
-                <Card variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: '#FFFFFF', height: '100%' }}>
+                <Card variant="outlined" sx={{ p: 2, borderRadius: 2, borderColor: c.border, bgcolor: 'background.paper', height: '100%' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                     Citizen Ground Observers & High-Consensus Barangays
                   </Typography>
@@ -394,10 +425,11 @@ export function FloodAnalyticsSection({
                             justifyContent: 'space-between',
                             p: 1.25,
                             borderRadius: 1.5,
-                            bgcolor: '#F8FAFC',
+                            bgcolor: c.subtle,
                             cursor: 'pointer',
-                            border: '1px solid rgba(0,0,0,0.06)',
-                            '&:hover': { bgcolor: '#F0F7FF', borderColor: '#0288D1' },
+                            border: '1px solid',
+                            borderColor: c.border,
+                            '&:hover': { bgcolor: c.hover, borderColor: c.blue },
                           }}
                         >
                           <Box>
@@ -411,14 +443,14 @@ export function FloodAnalyticsSection({
 
                           <Stack direction="row" spacing={1} alignItems="center">
                             <Chip
-                              icon={<VerifiedUserIcon sx={{ fontSize: '13px !important' }} />}
+                              icon={<VerifiedUserIcon sx={{ fontSize: '13px !important', color: 'inherit !important' }} />}
                               label={`${z.communityValidation.consensusPercentage}% Consensus`}
                               size="small"
                               sx={{
                                 fontWeight: 700,
                                 fontSize: '0.68rem',
-                                bgcolor: '#E8F5E9',
-                                color: '#2E7D32',
+                                bgcolor: isDark ? alpha('#66BB6A', 0.2) : '#E8F5E9',
+                                color: isDark ? '#A5D6A7' : '#2E7D32',
                               }}
                             />
                             <OpenInNewIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
